@@ -77,10 +77,14 @@ See [CONNECTION_STRING_GUIDE.md](CONNECTION_STRING_GUIDE.md) for connection-stri
 
 | Document | Covers |
 |:---|:---|
+| [FAQ.md](FAQ.md) | Common questions: empty panels, offline instances, estates, permissions, startup failures |
 | [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md) | Deployment, configuration, upgrades, uninstall, troubleshooting, security recommendations |
 | [CONNECTION_STRING_GUIDE.md](CONNECTION_STRING_GUIDE.md) | Connection-string options and common connection errors |
 | [CerberusInstaller/README.md](CerberusInstaller/README.md) | Building the MSI, installer ownership, legacy migration, release validation |
 | [Tests/CerberusDashboard.RegressionTests/README.md](Tests/CerberusDashboard.RegressionTests/README.md) | What the regression checks cover |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, code expectations, pull request checklist |
+| [SECURITY.md](SECURITY.md) | Vulnerability reporting, known design limitations, deployment hardening |
+| [CHANGELOG.md](CHANGELOG.md) | Notable changes |
 
 ## Project layout
 
@@ -121,3 +125,11 @@ A dependency-free executable that exits nonzero on failure — not a Test Explor
 
 - Data-protection keys are persisted to `%ProgramData%\CerberusDashboard\DataProtection` and protected with machine-level DPAPI, so they cannot be moved to another machine without a key-migration procedure.
 - `TrustServerCertificate=True` is acceptable for a local instance but should not be carried to a remote server; provision a trusted certificate instead.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code expectations, and the pull request checklist. Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). For security issues, follow [SECURITY.md](SECURITY.md) rather than opening an issue.
+
+## License
+
+[MIT](LICENSE)

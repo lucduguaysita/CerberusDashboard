@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest a new panel, metric, or capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the monitoring question you cannot currently answer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like the dashboard to show or do.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sql
+    attributes:
+      label: Data source
+      description: If this needs new SQL, which DMVs or catalog views would it read? Monitoring queries must be read-only.
+      render: sql
+
+  - type: input
+    id: permissions
+    attributes:
+      label: Required SQL permissions
+      description: Any grant beyond VIEW SERVER STATE / VIEW SERVER PERFORMANCE STATE. Operators have to request these from a DBA, so it matters.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

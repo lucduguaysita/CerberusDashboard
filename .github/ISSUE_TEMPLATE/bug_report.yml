@@ -1,0 +1,102 @@
+name: Bug report
+description: Something is not working as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not include real credentials, production hostnames, or customer data. Redact them.
+
+        For a security vulnerability, do **not** file an issue — see [SECURITY.md](../blob/master/SECURITY.md).
+
+        Several common situations are expected behaviour and are already explained in the [FAQ](../blob/master/FAQ.md): an empty dashboard on a fresh install, "INSTANCE OFFLINE" tabs, empty panels caused by DMV permissions, and the service refusing to start after an estate edit.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you observed, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-type
+    attributes:
+      label: How are you running it?
+      options:
+        - dotnet run (development)
+        - MSI install (Windows Service)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: MSI version, or the commit SHA you built from.
+    validations:
+      required: true
+
+  - type: input
+    id: sql-version
+    attributes:
+      label: SQL Server version
+      description: Output of `SELECT @@VERSION`, if the issue involves monitoring data.
+
+  - type: dropdown
+    id: panel
+    attributes:
+      label: Affected panel
+      description: If the issue is specific to one panel.
+      options:
+        - Not panel-specific
+        - Server Info
+        - Performance
+        - SQL Agent Jobs
+        - Blocking / Long Waits
+        - Recent Expensive Queries
+        - Active Queries
+        - Data File I/O Statistics
+        - Hot Tables
+        - Databases
+        - Job History
+        - Execution Plan
+        - Active Sessions
+        - File I/O History
+        - Partitions
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant configuration
+      description: The relevant part of `appsettings.json`, with servers and credentials redacted.
+      render: json
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or errors
+      description: Service output, Event Viewer entries, browser console errors, or the verbose MSI log.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I restarted the service after any configuration change
+          required: true
+        - label: I removed credentials and internal hostnames from everything above
+          required: true

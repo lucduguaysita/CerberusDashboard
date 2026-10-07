@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/lucduguaysita/CerberusDashboard#readme
+    about: Installation, configuration, and connection-string guides.
+  - name: FAQ
+    url: https://github.com/lucduguaysita/CerberusDashboard/blob/master/FAQ.md
+    about: Empty panels, offline instances, estates, permissions, and startup failures.
+  - name: Report a security vulnerability
+    url: https://github.com/lucduguaysita/CerberusDashboard/security/advisories/new
+    about: Private vulnerability reporting. Do not open a public issue.

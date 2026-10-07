@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Windows is required: the app hosts as a Windows Service, protects
+    # data-protection keys with DPAPI, and the installer is a WiX project.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Report SDK version
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore CerberusDashboard.sln
+
+      - name: Build solution and installer
+        run: dotnet build CerberusDashboard.sln -c Release --no-restore -p:InstallerVersion=0.0.1
+
+      - name: Run regression checks
+        # Dependency-free runner; exits nonzero on failure. Starts a temporary
+        # loopback server with empty estates, so it needs no SQL Server.
+        run: dotnet run --project .\Tests\CerberusDashboard.RegressionTests\CerberusDashboard.RegressionTests.csproj -c Release
+
+      - name: Upload MSI
+        uses: actions/upload-artifact@v4
+        with:
+          name: CerberusDashboard-msi
+          path: CerberusInstaller/bin/Release/*.msi
+          if-no-files-found: error
+          retention-days: 14
