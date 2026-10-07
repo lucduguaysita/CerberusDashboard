@@ -43,7 +43,7 @@ jobs:
         run: dotnet run --project .\Tests\CerberusDashboard.RegressionTests\CerberusDashboard.RegressionTests.csproj -c Release
 
       - name: Upload MSI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: CerberusDashboard-msi
           path: CerberusInstaller/bin/Release/*.msi
