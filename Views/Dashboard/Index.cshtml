@@ -1,0 +1,2404 @@
+@{
+    Layout = null;
+    string refreshSeconds = ViewBag.RefreshSeconds ?? "30";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cerberus SQL Server Monitoring tool</title>
+    <style>
+            /* ═══════════════════════════════════════════════════════════════
+                       CERBERUS SQL MONITOR — Industrial / Utilitarian Dark Theme
+                       Self-contained, zero external dependencies
+                    ═══════════════════════════════════════════════════════════════ */
+            @@font-face {
+                font-family: 'CerberusUI';
+                src: local('Consolas'), local('Courier New');
+            }
+
+            :root {
+                --bg-base: #0d0f14;
+                --bg-panel: #141720;
+                --bg-panel2: #1a1e2a;
+                --bg-panel3: #1f2436;
+                --border: #2a2f42;
+                --border-bright: #3a4060;
+                --accent: #e8a020;
+                --accent-dim: #9a6a10;
+                --green: #2ecc71;
+                --green-dim: #1a7a43;
+                --red: #e74c3c;
+                --red-dim: #7a1e16;
+                --yellow: #f1c40f;
+                --yellow-dim: #7a6008;
+                --blue: #3498db;
+                --blue-dim: #1a4a7a;
+                --purple: #9b59b6;
+                --teal: #1abc9c;
+                --teal-dim: #0d6b57;
+                --text-primary: #e0e4f0;
+                --text-secondary: #8a90a8;
+                --text-muted: #545870;
+                --font-mono: 'Consolas', 'Courier New', monospace;
+                --font-ui: 'Segoe UI', 'Tahoma', sans-serif;
+                --radius: 3px;
+                --transition: 0.15s ease;
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                background: var(--bg-base);
+                color: var(--text-primary);
+                font-family: var(--font-ui);
+                font-size: 13px;
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
+
+            .estate-toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 12px;
+                padding: 16px 20px;
+                margin-bottom: 20px;
+                background: var(--bg-panel2);
+                border-radius: 8px;
+            }
+
+            #estate-select {
+                min-height: 44px;
+                max-width: 100%;
+                padding: 8px 12px;
+                background: var(--bg-panel3);
+                color: var(--text-primary);
+                border: 1px solid var(--border-bright);
+                border-radius: 4px;
+                font: inherit;
+            }
+
+            #estate-select:focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
+
+            #estate-select:disabled { opacity: 0.6; }
+
+            /* ── HEADER ─────────────────────────────────────────────────── */
+            .header {
+                background: var(--bg-panel);
+                border-bottom: 2px solid var(--accent);
+                padding: 0 20px;
+                height: 52px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+
+            .header-logo {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .header-title {
+                font-size: 16px;
+                font-weight: 700;
+                letter-spacing: 2px;
+                text-transform: uppercase;
+                color: var(--text-primary);
+            }
+
+            .header-subtitle {
+                font-size: 11px;
+                color: var(--text-muted);
+                font-family: var(--font-mono);
+                margin-top: 1px;
+            }
+
+            .header-right {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+            }
+
+            .status-indicator {
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                font-size: 11px;
+                color: var(--text-secondary);
+                font-family: var(--font-mono);
+            }
+
+            .pulse-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: var(--green);
+                animation: pulse 2s infinite;
+            }
+
+                .pulse-dot.error {
+                    background: var(--red);
+                    animation: none;
+                }
+
+                .pulse-dot.loading {
+                    background: var(--yellow);
+                }
+
+            @@keyframes pulse {
+                0%, 100% {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+
+                50% {
+                    opacity: 0.4;
+                    transform: scale(0.85);
+                }
+            }
+
+            #refresh-btn {
+                background: var(--bg-panel2);
+                border: 1px solid var(--border);
+                color: var(--text-secondary);
+                font-size: 18px;
+                line-height: 1;
+                width: 32px;
+                height: 32px;
+                border-radius: 3px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-left: 10px;
+                transition: border-color 0.15s, color 0.15s;
+            }
+
+                #refresh-btn:hover {
+                    border-color: var(--teal);
+                    color: var(--teal);
+                }
+
+                #refresh-btn:active {
+                    background: var(--bg-panel3);
+                }
+
+
+            #last-updated {
+                font-family: var(--font-mono);
+                font-size: 11px;
+                color: var(--text-muted);
+            }
+
+            /* ── LAYOUT ─────────────────────────────────────────────────── */
+            .container {
+                padding: 16px 20px;
+                max-width: 1800px;
+                margin: 0 auto;
+            }
+
+            /* ── INSTANCE TABS ──────────────────────────────────────────── */
+            .instance-tabs {
+                display: flex;
+                gap: 4px;
+                margin-bottom: 16px;
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 0;
+            }
+
+            .tab-btn {
+                background: transparent;
+                border: 1px solid transparent;
+                border-bottom: none;
+                color: var(--text-secondary);
+                cursor: pointer;
+                padding: 8px 18px;
+                font-family: var(--font-ui);
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+                border-radius: var(--radius) var(--radius) 0 0;
+                transition: var(--transition);
+                position: relative;
+                bottom: -1px;
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+
+                .tab-btn:hover {
+                    color: var(--text-primary);
+                    background: var(--bg-panel2);
+                }
+
+                .tab-btn.active {
+                    color: var(--accent);
+                    background: var(--bg-panel);
+                    border-color: var(--border);
+                    border-bottom-color: var(--bg-base);
+                }
+
+            .tab-status-dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: var(--text-muted);
+            }
+
+                .tab-status-dot.online {
+                    background: var(--green);
+                }
+
+                .tab-status-dot.offline {
+                    background: var(--red);
+                }
+
+            /* ── INSTANCE PANEL ─────────────────────────────────────────── */
+            .instance-panel {
+                display: none;
+            }
+
+                .instance-panel.active {
+                    display: block;
+                }
+
+            /* ── SUMMARY ROW (KPI CARDS) ─────────────────────────────────── */
+            .kpi-row {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 10px;
+                margin-bottom: 16px;
+            }
+
+            .kpi-card {
+                background: var(--bg-panel);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: 12px 14px;
+                position: relative;
+                overflow: hidden;
+            }
+
+                .kpi-card::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 2px;
+                    background: var(--accent-dim);
+                }
+
+                .kpi-card.ok::before {
+                    background: var(--green);
+                }
+
+                .kpi-card.warn::before {
+                    background: var(--yellow);
+                }
+
+                .kpi-card.crit::before {
+                    background: var(--red);
+                }
+
+                .kpi-card.info::before {
+                    background: var(--blue);
+                }
+
+            .kpi-label {
+                font-size: 10px;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                margin-bottom: 6px;
+                font-weight: 600;
+            }
+
+            .kpi-value {
+                font-size: 24px;
+                font-weight: 700;
+                font-family: var(--font-mono);
+                color: var(--text-primary);
+                line-height: 1;
+                margin-bottom: 3px;
+            }
+
+            .kpi-sub {
+                font-size: 10px;
+                color: var(--text-muted);
+            }
+
+            /* ── TWO-COLUMN LAYOUT ──────────────────────────────────────── */
+            .grid-2 {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+
+            .grid-3 {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+
+            @@media (max-width: 1200px) {
+                .grid-3 {
+                    grid-template-columns: 1fr 1fr;
+                }
+            }
+
+            @@media (max-width: 900px) {
+                .grid-2, .grid-3 {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            /* ── PANEL ───────────────────────────────────────────────────── */
+            .panel {
+                background: var(--bg-panel);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                overflow: hidden;
+            }
+
+            .panel-header {
+                background: var(--bg-panel2);
+                border-bottom: 1px solid var(--border);
+                padding: 9px 14px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+                .panel-header.teal-accent {
+                    border-left: 3px solid var(--teal);
+                }
+
+            .panel-title {
+                font-size: 11px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: var(--text-secondary);
+            }
+
+            .panel-badge {
+                background: var(--bg-panel3);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                padding: 1px 8px;
+                font-size: 10px;
+                font-family: var(--font-mono);
+                color: var(--text-muted);
+            }
+
+                .panel-badge.teal {
+                    border-color: var(--teal-dim);
+                    color: var(--teal);
+                }
+
+            .panel-body {
+                padding: 12px 14px;
+            }
+
+            /* ── TABLE ───────────────────────────────────────────────────── */
+            .data-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 12px;
+            }
+
+                .data-table th {
+                    text-align: left;
+                    font-size: 10px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.6px;
+                    color: var(--text-muted);
+                    padding: 6px 8px;
+                    border-bottom: 1px solid var(--border);
+                    white-space: nowrap;
+                }
+
+                .data-table td {
+                    padding: 7px 8px;
+                    border-bottom: 1px solid var(--border);
+                    color: var(--text-secondary);
+                    vertical-align: middle;
+                }
+
+                .data-table tr:last-child td {
+                    border-bottom: none;
+                }
+
+                .data-table tr:hover td {
+                    background: var(--bg-panel2);
+                    color: var(--text-primary);
+                }
+
+            /* ── JOB STATUS BADGES ───────────────────────────────────────── */
+            .badge {
+                display: inline-block;
+                padding: 2px 7px;
+                border-radius: 2px;
+                font-size: 10px;
+                font-weight: 700;
+                font-family: var(--font-mono);
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+            }
+
+            .badge-ok {
+                background: var(--green-dim);
+                color: var(--green);
+                border: 1px solid var(--green-dim);
+            }
+
+            .badge-fail {
+                background: var(--red-dim);
+                color: var(--red);
+                border: 1px solid var(--red-dim);
+            }
+
+            .badge-running {
+                background: var(--blue-dim);
+                color: var(--blue);
+                border: 1px solid var(--blue-dim);
+                animation: pulse 1.5s infinite;
+            }
+
+            .badge-disabled {
+                background: var(--bg-panel3);
+                color: var(--text-muted);
+                border: 1px solid var(--border);
+            }
+
+            .badge-unknown {
+                background: var(--yellow-dim);
+                color: var(--yellow);
+                border: 1px solid var(--yellow-dim);
+            }
+
+            .badge-online {
+                background: var(--green-dim);
+                color: var(--green);
+                border: 1px solid var(--green-dim);
+            }
+
+            .badge-offline {
+                background: var(--red-dim);
+                color: var(--red);
+                border: 1px solid var(--red-dim);
+            }
+
+            .badge-recent {
+                background: var(--teal-dim);
+                color: var(--teal);
+                border: 1px solid var(--teal-dim);
+            }
+
+            /* ── METRIC BARS ─────────────────────────────────────────────── */
+            .metric-bar-wrap {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .metric-bar-track {
+                flex: 1;
+                height: 4px;
+                background: var(--bg-panel3);
+                border-radius: 2px;
+                overflow: hidden;
+            }
+
+            .metric-bar-fill {
+                height: 100%;
+                border-radius: 2px;
+                background: var(--accent);
+                transition: width 0.6s ease;
+            }
+
+                .metric-bar-fill.ok {
+                    background: var(--green);
+                }
+
+                .metric-bar-fill.warn {
+                    background: var(--yellow);
+                }
+
+                .metric-bar-fill.crit {
+                    background: var(--red);
+                }
+
+            .metric-bar-val {
+                min-width: 42px;
+                text-align: right;
+                font-family: var(--font-mono);
+                font-size: 11px;
+                color: var(--text-secondary);
+            }
+
+            /* ── OFFLINE STATE ───────────────────────────────────────────── */
+            .offline-notice {
+                padding: 40px 20px;
+                text-align: center;
+                color: var(--red);
+            }
+
+                .offline-notice .offline-icon {
+                    font-size: 36px;
+                    margin-bottom: 12px;
+                }
+
+                .offline-notice p {
+                    color: var(--text-muted);
+                    font-family: var(--font-mono);
+                    font-size: 12px;
+                    margin-top: 8px;
+                }
+
+            /* ── SCROLL PANELS ───────────────────────────────────────────── */
+            .scroll-panel {
+                max-height: 360px;
+                overflow-y: auto;
+            }
+
+                .scroll-panel::-webkit-scrollbar {
+                    width: 4px;
+                }
+
+                .scroll-panel::-webkit-scrollbar-track {
+                    background: var(--bg-panel2);
+                }
+
+                .scroll-panel::-webkit-scrollbar-thumb {
+                    background: var(--border-bright);
+                    border-radius: 2px;
+                }
+
+            /* ── SQL TEXT DISPLAY ────────────────────────────────────────── */
+            .sql-text {
+                font-family: var(--font-mono);
+                font-size: 10px;
+                color: var(--text-muted);
+                max-width: 320px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+                .sql-text:hover {
+                    white-space: normal;
+                    word-break: break-all;
+                }
+
+            /* ── UPTIME / SERVER INFO ────────────────────────────────────── */
+            .server-info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px 16px;
+            }
+
+            .server-info-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 5px 0;
+                border-bottom: 1px solid var(--border);
+            }
+
+                .server-info-row:last-child {
+                    border-bottom: none;
+                }
+
+            .sil {
+                font-size: 11px;
+                color: var(--text-muted);
+            }
+
+            .siv {
+                font-size: 11px;
+                font-family: var(--font-mono);
+                color: var(--text-primary);
+            }
+
+            /* ── WAIT STATS ──────────────────────────────────────────────── */
+            .wait-badge {
+                background: var(--bg-panel3);
+                border: 1px solid var(--purple);
+                color: var(--purple);
+                padding: 2px 8px;
+                border-radius: 2px;
+                font-family: var(--font-mono);
+                font-size: 11px;
+            }
+
+            /* ── LOADING SKELETON ────────────────────────────────────────── */
+            .skeleton-line {
+                height: 12px;
+                background: linear-gradient(90deg, var(--bg-panel2) 25%, var(--bg-panel3) 50%, var(--bg-panel2) 75%);
+                background-size: 200% 100%;
+                animation: shimmer 1.5s infinite;
+                border-radius: 2px;
+                margin-bottom: 8px;
+            }
+
+            @@keyframes shimmer {
+                0% {
+                    background-position: 200% 0;
+                }
+
+                100% {
+                    background-position: -200% 0;
+                }
+            }
+
+            #loading-state {
+                padding: 40px;
+                text-align: center;
+            }
+
+                #loading-state .skeleton-line {
+                    max-width: 400px;
+                    margin: 8px auto;
+                }
+
+            /* ── FOOTER ──────────────────────────────────────────────────── */
+            .footer {
+                border-top: 1px solid var(--border);
+                padding: 10px 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                color: var(--text-muted);
+                font-family: var(--font-mono);
+                font-size: 10px;
+                margin-top: 20px;
+            }
+
+            /* ── RESPONSIVE ──────────────────────────────────────────────── */
+            @@media (max-width: 768px) {
+                .kpi-row {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+
+                .header-subtitle {
+                    display: none;
+                }
+            }
+
+            /* ── RECENT QUERIES — elapsed-time coloring ──────────────────── */
+            .elapsed-ok {
+                color: var(--green);
+            }
+
+            .elapsed-warn {
+                color: var(--yellow);
+            }
+
+            .elapsed-crit {
+                color: var(--red);
+            }
+
+            .data-table tr.rq-slow td:first-child {
+                border-left: 2px solid var(--yellow);
+            }
+
+            .data-table tr.rq-critical td:first-child {
+                border-left: 2px solid var(--red);
+            }
+
+            /* ── MODALS ──────────────────────────────────────────────────── */
+            .modal-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.7);
+                z-index: 200;
+                align-items: center;
+                justify-content: center;
+            }
+
+                .modal-overlay.open {
+                    display: flex;
+                }
+
+            .modal {
+                background: var(--bg-panel);
+                border: 1px solid var(--border-bright);
+                border-radius: var(--radius);
+                width: 90%;
+                max-width: 1100px;
+                max-height: 85vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .modal-header {
+                background: var(--bg-panel2);
+                border-bottom: 1px solid var(--border);
+                padding: 12px 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .modal-close {
+                background: none;
+                border: none;
+                color: var(--text-muted);
+                font-size: 18px;
+                cursor: pointer;
+                padding: 0 4px;
+            }
+
+                .modal-close:hover {
+                    color: var(--text-primary);
+                }
+
+            .modal-body {
+                padding: 16px;
+                overflow-y: auto;
+            }
+
+            .step-message {
+                font-family: var(--font-mono);
+                font-size: 10px;
+                color: var(--text-muted);
+                background: var(--bg-base);
+                border: 1px solid var(--border);
+                border-radius: 2px;
+                padding: 6px 8px;
+                white-space: pre-wrap;
+                word-break: break-all;
+                max-height: 120px;
+                overflow-y: auto;
+                margin-top: 4px;
+            }
+
+            .plan-xml {
+                font-family: var(--font-mono);
+                font-size: 10px;
+                color: var(--text-muted);
+                background: var(--bg-base);
+                border: 1px solid var(--border);
+                border-radius: 2px;
+                padding: 12px;
+                white-space: pre;
+                overflow: auto;
+                max-height: 60vh;
+                word-break: break-all;
+            }
+
+            .plan-node {
+                background: var(--bg-panel2);
+                border: 1px solid var(--border);
+                border-radius: 2px;
+                padding: 6px 10px;
+                margin: 3px 0;
+                font-size: 11px;
+                cursor: pointer;
+            }
+
+                .plan-node:hover {
+                    border-color: var(--accent);
+                }
+
+                .plan-node.expensive {
+                    border-left: 3px solid var(--red);
+                }
+
+                .plan-node.medium {
+                    border-left: 3px solid var(--yellow);
+                }
+
+                .plan-node.cheap {
+                    border-left: 3px solid var(--green);
+                }
+    </style>
+</head>
+<body>
+
+    <!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
+    <header class="header">
+        <div class="header-logo">
+            <div>
+                <div class="header-title">Cerberus SQL Server Monitoring tool</div>
+                <div class="header-subtitle">Cerberus Dashboard</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="status-indicator">
+                <div class="pulse-dot loading" id="status-dot"></div>
+                <span id="status-text">Connecting...</span>
+            </div>
+            <div style="text-align:right;">
+                <div id="last-updated">--:--:--</div>
+                <div id="next-refresh" style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:2px;">next refresh: --</div>
+            </div>
+            <button id="refresh-btn" onclick="cerberus.manualRefresh()" title="Refresh now">&#8635;</button>
+        </div>
+    </header>
+
+    <!-- ════════════════════════════ MAIN CONTENT ════════════════════════════ -->
+    <div class="container">
+
+        <form id="estate-form" class="estate-toolbar" method="post" action="@Url.Action("SelectEstate", "Dashboard")">
+            @Html.AntiForgeryToken()
+            <label for="estate-select">Estate</label>
+            <select id="estate-select" name="estateKey" aria-describedby="estate-message" disabled>
+                <option>Loading estates...</option>
+            </select>
+            <span id="estate-message" role="status" aria-live="polite"></span>
+        </form>
+
+        <div id="loading-state">
+            <div style="max-width:500px;margin:60px auto;text-align:left;padding:0 20px;">
+
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);
+                    text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px;">
+                    Initializing SQL Monitor
+                </div>
+
+                <div style="height:3px;background:var(--bg-panel3);border-radius:2px;
+                    margin-bottom:16px;overflow:hidden;">
+                    <div id="load-bar"
+                         style="height:100%;width:2%;background:var(--accent);
+                    border-radius:2px;transition:width 0.35s ease;"></div>
+                </div>
+
+                <div id="load-step"
+                     style="font-family:var(--font-mono);font-size:12px;
+                    color:var(--text-secondary);margin-bottom:14px;min-height:18px;">
+                    Connecting...
+                </div>
+
+                <div id="load-log"
+                     style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);
+                    max-height:200px;overflow-y:auto;line-height:1.9;
+                    border-left:2px solid var(--border);padding-left:10px;">
+                </div>
+
+            </div>
+        </div>
+
+        <div id="dashboard" style="display:none;"></div>
+
+    </div>
+
+    <!-- ══════════════════════════════ FOOTER ════════════════════════════════ -->
+    <div class="footer">
+        <span>Cerberus &mdash; .NET 10.0 / ASP.NET Core SignalR &mdash; Air-Gapped &mdash; by LD</span>
+        <span id="footer-refresh">Refresh: @refreshSeconds s</span>
+    </div>
+
+    <!-- ════════════════════════════ SCRIPTS ════════════════════════════════ -->
+    <script src="~/Content/scripts/jquery-3.6.0.min.js"></script>
+    <script src="~/Content/scripts/signalr.min.js"></script>
+
+    <script>
+        (function () {
+        'use strict';
+
+        // ─── State ───────────────────────────────────────────────────────────────
+        var currentInstance = null;
+        var latestSnapshot = null;
+        var estateState = null;
+        var estateReloading = false;
+        var estateSwitchPending = false;
+        var _fileIOHistory = {};    // instanceKey -> [{t, rBps, wBps, rLat, wLat}]  (aggregate)
+        var _fileIOPerFile = {};   // instanceKey -> fileKey -> [{t, rBps, wBps, rLat, wLat}]
+
+        // ─── Helpers ─────────────────────────────────────────────────────────────
+        function fmt(val, decimals) {
+        if (val == null || isNaN(val)) return '—';
+        return parseFloat(val).toFixed(decimals || 0);
+        }
+
+        function fmtDate(dt) {
+        if (!dt) return '—';
+        var d = new Date(dt);
+        if (isNaN(d.getTime())) return '—';
+        var pad = function (n) { return n.toString().padStart(2, '0'); };
+        return d.getFullYear() + '-' +
+        pad(d.getMonth() + 1) + '-' +
+        pad(d.getDate()) + ' ' +
+        pad(d.getHours()) + ':' +
+        pad(d.getMinutes()) + ':' +
+        pad(d.getSeconds());
+        }
+
+        function fmtUptime(hours) {
+        if (!hours || hours <= 0) return '—';
+        var years = Math.floor(hours / 8760);
+        var days = Math.floor((hours % 8760) / 24);
+        var hrs = hours % 24;
+        var parts = [];
+        if (years > 0) parts.push(years + 'y');
+        if (days > 0) parts.push(days + 'd');
+        parts.push(hrs + 'h');
+        return parts.join(' ');
+        }
+
+        function fmtDuration(seconds) {
+        if (!seconds || seconds <= 0) return '—';
+        var h = Math.floor(seconds / 3600);
+        var m = Math.floor((seconds % 3600) / 60);
+        var s = seconds % 60;
+        if (h > 0) return h + 'h ' + m + 'm';
+        if (m > 0) return m + 'm ' + s + 's';
+        return s + 's';
+        }
+
+        function fmtMb(mb) {
+        if (mb == null) return '—';
+        if (mb >= 1048576) return fmt(mb / 1048576, 2) + ' TB';
+        if (mb >= 1024) return fmt(mb / 1024, 1) + ' GB';
+        return fmt(mb, 0) + ' MB';
+        }
+
+        function fmtElapsedMs(ms) {
+        if (ms == null || isNaN(ms)) return '—';
+        if (ms < 1000) return ms + ' ms';
+        if (ms < 60000) return (ms / 1000).toFixed(1) + ' s';
+        return Math.floor(ms / 60000) + 'm ' + Math.floor((ms % 60000) / 1000) + 's';
+        }
+
+        function fmtBpsRaw(bps) {
+        if (bps <= 0) return '0';
+        if (bps >= 1073741824) return (bps / 1073741824).toFixed(2) + ' GB/s';
+        if (bps >= 1048576)    return (bps / 1048576).toFixed(1)    + ' MB/s';
+        if (bps >= 1024)       return (bps / 1024).toFixed(0)       + ' KB/s';
+        return Math.round(bps) + ' B/s';
+        }
+
+        function updateFileIOHistory(instanceKey, fileIOData) {
+        if (!_fileIOHistory[instanceKey]) _fileIOHistory[instanceKey] = [];
+        var files = fileIOData || [];
+        if (files.length > 0 && files.every(function (f) { return f.ReadBytesPerSec < 0; })) return;
+        var rBpsTotal = 0, wBpsTotal = 0;
+        var weightedRLat = 0, totalReads = 0;
+        var weightedWLat = 0, totalWrites = 0;
+        files.forEach(function (f) {
+            rBpsTotal += Math.max(0, f.ReadBytesPerSec  || 0);
+            wBpsTotal += Math.max(0, f.WriteBytesPerSec || 0);
+            var nr = f.NumReads  || 0, nw = f.NumWrites || 0;
+            if (nr > 0) { weightedRLat += (f.AvgReadLatencyMs  || 0) * nr; totalReads  += nr; }
+            if (nw > 0) { weightedWLat += (f.AvgWriteLatencyMs || 0) * nw; totalWrites += nw; }
+        });
+        _fileIOHistory[instanceKey].push({
+            t:    new Date(),
+            rBps: rBpsTotal,
+            wBps: wBpsTotal,
+            rLat: totalReads  > 0 ? weightedRLat / totalReads  : 0,
+            wLat: totalWrites > 0 ? weightedWLat / totalWrites : 0
+        });
+        if (_fileIOHistory[instanceKey].length > 60)
+            _fileIOHistory[instanceKey].shift();
+        }
+
+        function updateFileIOPerFile(instanceKey, fileIOData) {
+        if (!_fileIOPerFile[instanceKey]) _fileIOPerFile[instanceKey] = {};
+        (fileIOData || []).forEach(function (f) {
+            if (f.ReadBytesPerSec < 0) return;
+            var fk = f.DatabaseName + '|' + f.FileName;
+            if (!_fileIOPerFile[instanceKey][fk]) _fileIOPerFile[instanceKey][fk] = [];
+            _fileIOPerFile[instanceKey][fk].push({
+                t:    new Date(),
+                rBps: f.ReadBytesPerSec   || 0,
+                wBps: f.WriteBytesPerSec  || 0,
+                rLat: f.AvgReadLatencyMs  || 0,
+                wLat: f.AvgWriteLatencyMs || 0
+            });
+            if (_fileIOPerFile[instanceKey][fk].length > 60)
+                _fileIOPerFile[instanceKey][fk].shift();
+        });
+        }
+
+        function drawIOHistoryChart(canvas, history, hoverFrac) {
+        var dpr = window.devicePixelRatio || 1;
+        var logW = canvas.offsetWidth  || 800;
+        var logH = canvas.offsetHeight || 230;
+        if (logW < 10 || logH < 10) return;
+        canvas.width  = Math.round(logW * dpr);
+        canvas.height = Math.round(logH * dpr);
+        var ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        var W = logW, H = logH;
+        var pT = 28, pB = 34, pL = 76, pR = 82;
+        var cW = W - pL - pR, cH = H - pT - pB;
+
+        ctx.fillStyle = '#0d0f14';
+        ctx.fillRect(0, 0, W, H);
+
+        if (history.length === 0) {
+            ctx.fillStyle = '#545870';
+            ctx.font = '11px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Waiting for first data...', W / 2, H / 2);
+            return;
+        }
+
+        var n = history.length;
+        var maxBps = 1, maxLat = 0.001;
+        history.forEach(function (p) {
+            if (p.rBps > maxBps) maxBps = p.rBps;
+            if (p.wBps > maxBps) maxBps = p.wBps;
+            if (p.rLat > maxLat) maxLat = p.rLat;
+            if (p.wLat > maxLat) maxLat = p.wLat;
+        });
+        function niceTop(v) {
+            var mag = Math.pow(10, Math.floor(Math.log10(v)));
+            return Math.ceil(v * 1.2 / mag) * mag;
+        }
+        maxBps = niceTop(maxBps);
+        maxLat = niceTop(maxLat);
+
+        var GRID = 4;
+        ctx.strokeStyle = '#1a1e2a';
+        ctx.lineWidth = 1;
+        for (var gi = 0; gi <= GRID; gi++) {
+            var gy = pT + cH - gi / GRID * cH;
+            ctx.beginPath(); ctx.moveTo(pL, gy); ctx.lineTo(pL + cW, gy); ctx.stroke();
+        }
+
+        ctx.font = '9px Consolas, monospace';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#1abc9c';
+        ctx.textAlign = 'right';
+        for (var gi = 0; gi <= GRID; gi++) {
+            var gy = pT + cH - gi / GRID * cH;
+            ctx.fillText(fmtBpsRaw(gi / GRID * maxBps), pL - 5, gy);
+        }
+
+        ctx.fillStyle = '#f1c40f';
+        ctx.textAlign = 'left';
+        for (var gi = 0; gi <= GRID; gi++) {
+            var gy = pT + cH - gi / GRID * cH;
+            var lv = gi / GRID * maxLat;
+            ctx.fillText((lv < 1 ? lv.toFixed(2) : lv < 10 ? lv.toFixed(1) : Math.round(lv)) + ' ms', pL + cW + 5, gy);
+        }
+
+        ctx.strokeStyle = '#2a2f42';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(pL, pT, cW, cH);
+
+        ctx.fillStyle = '#545870';
+        ctx.font = '9px Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        var lblCount = Math.min(7, n);
+        var pad2 = function (v) { return v.toString().padStart(2, '0'); };
+        for (var li = 0; li < lblCount; li++) {
+            var idx = lblCount < 2 ? 0 : Math.round(li / (lblCount - 1) * (n - 1));
+            var lx2 = n < 2 ? pL + cW / 2 : pL + idx / (n - 1) * cW;
+            var d = history[idx].t;
+            ctx.fillText(pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()), lx2, pT + cH + 4);
+        }
+
+        if (n === 1) {
+            ctx.fillStyle = '#545870';
+            ctx.font = '9px Consolas, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText('next refresh will show trend', pL + cW / 2, pT + cH - 16);
+        }
+
+        function series(vals, maxVal, color, dashed) {
+            if (!vals.some(function (v) { return v > 0; })) return;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash(dashed ? [5, 3] : []);
+            if (n === 1) {
+                var sx = pL + cW / 2;
+                var sy = pT + cH - Math.min(1, vals[0] / maxVal) * cH;
+                ctx.beginPath();
+                ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+            } else {
+                ctx.beginPath();
+                vals.forEach(function (v, i) {
+                    var sx = pL + i / (n - 1) * cW;
+                    var sy = pT + cH - Math.min(1, v / maxVal) * cH;
+                    i === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+                });
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+        }
+
+        series(history.map(function (p) { return p.rBps; }), maxBps, '#1abc9c', false);
+        series(history.map(function (p) { return p.wBps; }), maxBps, '#3498db', false);
+        series(history.map(function (p) { return p.rLat; }), maxLat, '#f1c40f', true);
+        series(history.map(function (p) { return p.wLat; }), maxLat, '#e74c3c', true);
+
+        var legendItems = [
+            { label: 'Read B/s',  color: '#1abc9c', dashed: false },
+            { label: 'Write B/s', color: '#3498db', dashed: false },
+            { label: 'Read Lat',  color: '#f1c40f', dashed: true  },
+            { label: 'Write Lat', color: '#e74c3c', dashed: true  }
+        ];
+        var lx = pL + 8, ly = pT + 10;
+        ctx.font = '9px Consolas, monospace';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        legendItems.forEach(function (item) {
+            ctx.beginPath();
+            ctx.strokeStyle = item.color;
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash(item.dashed ? [4, 2] : []);
+            ctx.moveTo(lx, ly); ctx.lineTo(lx + 16, ly);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = item.color;
+            ctx.fillText(item.label, lx + 20, ly);
+            lx += 20 + ctx.measureText(item.label).width + 14;
+        });
+
+        // Hover crosshair + tooltip
+        if (hoverFrac != null && n >= 2) {
+            var hi = Math.max(0, Math.min(n - 1, Math.round(hoverFrac * (n - 1))));
+            var hp = history[hi];
+            var hx = pL + hi / (n - 1) * cW;
+
+            // Vertical crosshair
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath(); ctx.moveTo(hx, pT); ctx.lineTo(hx, pT + cH); ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Dots at each series value
+            [
+                { val: hp.rBps, max: maxBps, color: '#1abc9c' },
+                { val: hp.wBps, max: maxBps, color: '#3498db' },
+                { val: hp.rLat, max: maxLat, color: '#f1c40f' },
+                { val: hp.wLat, max: maxLat, color: '#e74c3c' }
+            ].forEach(function (s) {
+                if (s.val <= 0 || s.max <= 0) return;
+                var sy = pT + cH - Math.min(1, s.val / s.max) * cH;
+                ctx.beginPath();
+                ctx.arc(hx, sy, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = s.color; ctx.fill();
+                ctx.strokeStyle = '#0d0f14'; ctx.lineWidth = 1; ctx.stroke();
+            });
+
+            // Tooltip
+            var tpad = function (v) { return v.toString().padStart(2, '0'); };
+            var td = hp.t;
+            var fmtLat = function (v) { return v < 1 ? v.toFixed(2) : v < 10 ? v.toFixed(1) : Math.round(v); };
+            var tipLines = [
+                { text: tpad(td.getHours()) + ':' + tpad(td.getMinutes()) + ':' + tpad(td.getSeconds()), color: '#8a90a8' },
+                { text: 'Read   ' + fmtBpsRaw(hp.rBps),              color: '#1abc9c' },
+                { text: 'Write  ' + fmtBpsRaw(hp.wBps),              color: '#3498db' },
+                { text: 'R.Lat  ' + fmtLat(hp.rLat) + ' ms',         color: '#f1c40f' },
+                { text: 'W.Lat  ' + fmtLat(hp.wLat) + ' ms',         color: '#e74c3c' }
+            ];
+            ctx.font = '10px Consolas, monospace';
+            var lh = 15, tp = 8, maxTW = 0;
+            tipLines.forEach(function (l) { var w = ctx.measureText(l.text).width; if (w > maxTW) maxTW = w; });
+            var tipW = maxTW + tp * 2, tipH = tipLines.length * lh + tp;
+            var tipX = hx + 12, tipY = pT + 6;
+            if (tipX + tipW > pL + cW) tipX = hx - tipW - 12;
+
+            ctx.fillStyle = 'rgba(13,15,20,0.93)';
+            ctx.strokeStyle = '#3a4060';
+            ctx.lineWidth = 1;
+            var r = 3;
+            ctx.beginPath();
+            ctx.moveTo(tipX + r, tipY);
+            ctx.lineTo(tipX + tipW - r, tipY);
+            ctx.quadraticCurveTo(tipX + tipW, tipY, tipX + tipW, tipY + r);
+            ctx.lineTo(tipX + tipW, tipY + tipH - r);
+            ctx.quadraticCurveTo(tipX + tipW, tipY + tipH, tipX + tipW - r, tipY + tipH);
+            ctx.lineTo(tipX + r, tipY + tipH);
+            ctx.quadraticCurveTo(tipX, tipY + tipH, tipX, tipY + tipH - r);
+            ctx.lineTo(tipX, tipY + r);
+            ctx.quadraticCurveTo(tipX, tipY, tipX + r, tipY);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+            tipLines.forEach(function (l, i) {
+                ctx.fillStyle = l.color;
+                ctx.fillText(l.text, tipX + tp, tipY + tp / 2 + i * lh);
+            });
+        }
+        }
+
+        function drawFileIOChart(instanceKey) {
+        var canvas = document.getElementById('fileio-chart-' + instanceKey);
+        if (!canvas) return;
+        var pL = 76, pR = 82;
+        drawIOHistoryChart(canvas, _fileIOHistory[instanceKey] || [], null);
+        canvas.style.cursor = 'crosshair';
+        canvas.onmousemove = function (e) {
+            var rect = canvas.getBoundingClientRect();
+            var frac = Math.max(0, Math.min(1, (e.clientX - rect.left - pL) / (canvas.offsetWidth - pL - pR)));
+            drawIOHistoryChart(canvas, _fileIOHistory[instanceKey] || [], frac);
+        };
+        canvas.onmouseleave = function () {
+            drawIOHistoryChart(canvas, _fileIOHistory[instanceKey] || [], null);
+        };
+        }
+
+        function ple_class(ple) {
+        if (ple >= 300) return 'ok';
+        if (ple >= 100) return 'warn';
+        return 'crit';
+        }
+
+        function ple_label(ple) {
+        if (ple >= 300) return ['HEALTHY', 'badge-ok'];
+        if (ple >= 100) return ['DEGRADED', 'badge-unknown'];
+        return ['CRITICAL', 'badge-fail'];
+        }
+
+        function bcr_class(bcr) {
+        if (bcr >= 95) return 'ok';
+        if (bcr >= 85) return 'warn';
+        return 'crit';
+        }
+
+        function cpu_class(cpu) {
+        if (cpu <= 60) return 'ok';
+        if (cpu <= 85) return 'warn';
+        return 'crit';
+        }
+
+        function elapsed_class(ms) {
+        if (ms == null) return 'ok';
+        if (ms < 1000) return 'ok';
+        if (ms < 5000) return 'warn';
+        return 'crit';
+        }
+
+        function bar(pct, cls) {
+        var capped = Math.min(100, Math.max(0, pct || 0));
+        return '<div class="metric-bar-wrap">' +
+        '<div class="metric-bar-track"><div class="metric-bar-fill ' + cls + '" style="width:' + capped + '%"></div></div>' +
+        '<span class="metric-bar-val">' + fmt(pct, 1) + '%</span>' +
+        '</div>';
+        }
+
+        function fmtBytesPerSec(bps) {
+        if (bps == null || bps <= 0) return '<span style="color:var(--text-muted)">—</span>';
+        if (bps >= 1073741824) return (bps / 1073741824).toFixed(2) + ' GB/s';
+        if (bps >= 1048576)    return (bps / 1048576).toFixed(1)    + ' MB/s';
+        if (bps >= 1024)       return (bps / 1024).toFixed(1)       + ' KB/s';
+        return Math.round(bps) + ' B/s';
+        }
+
+        function escHtml(str) {
+        if (!str) return '';
+        return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+        }
+
+        // ─── Build Dashboard HTML ────────────────────────────────────────────────
+        function buildDashboard(snapshot) {
+        latestSnapshot = snapshot;
+        var instances = snapshot.Instances || [];
+
+        if (instances.length === 0) {
+        return '<p style="color:var(--text-muted);padding:40px;text-align:center;">No instances configured.</p>';
+        }
+
+        if (!currentInstance) currentInstance = instances[0].InstanceKey;
+
+        var tabHtml = '<div class="instance-tabs">';
+        instances.forEach(function (inst) {
+        var isActive = inst.InstanceKey === currentInstance;
+        var dotCls = inst.IsOnline ? 'online' : 'offline';
+        tabHtml += '<button class="tab-btn' + (isActive ? ' active' : '') + '" ' +
+        'onclick="cerberus.switchTab(\'' + escHtml(inst.InstanceKey) + '\')">' +
+        '<span class="tab-status-dot ' + dotCls + '"></span>' +
+        escHtml(inst.DisplayName) +
+        '</button>';
+        });
+        tabHtml += '</div>';
+
+        var panelsHtml = '';
+        instances.forEach(function (inst) {
+        var isActive = inst.InstanceKey === currentInstance;
+        panelsHtml += '<div class="instance-panel' + (isActive ? ' active' : '') + '" ' +
+        'id="panel-' + escHtml(inst.InstanceKey) + '">' +
+        buildInstancePanel(inst) +
+        '</div>';
+        });
+
+        return tabHtml + panelsHtml;
+        }
+
+        function buildInstancePanel(inst) {
+        if (!inst.IsOnline) {
+        return '<div class="offline-notice">' +
+        '<div class="offline-icon">⚠</div>' +
+        '<strong style="font-size:15px;">INSTANCE OFFLINE</strong>' +
+        '<p>' + escHtml(inst.ErrorMessage) + '</p>' +
+        '</div>';
+        }
+
+        var p = inst.Performance || {};
+        var s = inst.ServerInfo || {};
+        var jobs = inst.Jobs || [];
+        var blocked = inst.BlockedSessions || [];
+        var queries = inst.TopQueries || [];
+        var recentQueries = inst.RecentQueries || [];
+        var dbs = inst.Databases || [];
+
+        var failedJobs = jobs.filter(function (j) { return j.LastRunStatus === 0; }).length;
+        var runningJobs = jobs.filter(function (j) { return j.LastRunStatus === 4; }).length;
+
+        var uptimeHours = 0;
+        if (s.SqlStartTime) {
+        uptimeHours = Math.floor((new Date() - new Date(s.SqlStartTime)) / 3600000);
+        }
+
+        // ── KPI Cards ──
+        var kpi = '<div class="kpi-row">';
+
+        var cpuCls = cpu_class(p.CpuUsagePercent);
+        kpi += kpiCard('CPU Usage', fmt(p.CpuUsagePercent, 0) + '%', cpuCls, 'SQL Process CPU', cpuCls);
+
+        var bcrCls = bcr_class(p.BufferCacheHitRatio);
+        kpi += kpiCard('Buffer Cache Hit', fmt(p.BufferCacheHitRatio, 1) + '%', bcrCls, '&gt;95% is healthy', bcrCls);
+
+        kpi += '<div class="kpi-card info" style="cursor:pointer;" ' +
+        'onclick="cerberus.showActiveSessions(\'' + escHtml(inst.InstanceKey) + '\')" ' +
+        'title="Click for session details">' +
+        '<div class="kpi-label">Total Connections</div>' +
+        '<div class="kpi-value">' + p.ActiveConnections + '</div>' +
+        '<div class="kpi-sub" style="color:var(--blue);">↗ click for details on active sessions only</div>' +
+        '</div>';
+
+        var blkCls = p.BlockedProcesses > 0 ? 'crit' : 'ok';
+        kpi += kpiCard('Blocked', p.BlockedProcesses, blkCls, 'Blocked processes', blkCls);
+
+        var failCls = failedJobs > 0 ? 'crit' : 'ok';
+        kpi += kpiCard('Failed Jobs', failedJobs, failCls, 'Since last run', failCls);
+
+        kpi += kpiCard('Batch Req/s', fmt(p.BatchRequestsPerSec, 0), 'info', 'Requests per second', 'info');
+
+        kpi += kpiCard('SQL Memory', fmtMb(s.SqlMemoryUsedMb), 'info', 'of ' + fmtMb(s.PhysicalMemoryMb), 'info');
+
+        kpi += '</div>';
+
+        // ── Top Row: Server Info + Performance Metrics ──
+        var topRow = '<div class="grid-2">';
+
+        topRow += '<div class="panel"><div class="panel-header teal-accent"><span class="panel-title" style="color:var(--teal);">Server Info</span>' +
+        '<span class="badge badge-online">ONLINE</span>' +
+        '</div><div class="panel-body"><div class="server-info-grid">';
+        topRow += sRow('Version', escHtml((s.ServerVersion || '').substring(0, 60)));
+        topRow += sRow('Edition', escHtml(s.Edition));
+        topRow += sRow('CPU Count', s.CpuCount);
+        topRow += sRow('Physical RAM', fmtMb(s.PhysicalMemoryMb));
+        topRow += sRow('SQL Memory Used', fmtMb(s.SqlMemoryUsedMb));
+        topRow += sRow('SQL Uptime', fmtUptime(uptimeHours));
+        topRow += sRow('Started', fmtDate(s.SqlStartTime));
+        topRow += sRow('Collation', escHtml(s.Collation));
+        topRow += '</div></div></div>';
+
+        var pleBadge = ple_label(p.PageLifeExpectancy);
+
+        topRow += '<div class="panel"><div class="panel-header teal-accent"><span class="panel-title" style="color:var(--teal);">Performance</span></div><div class="panel-body">';
+        topRow += perfRow('CPU Usage', p.CpuUsagePercent, cpu_class(p.CpuUsagePercent));
+        topRow += perfRow('Buffer Cache Hit', p.BufferCacheHitRatio, bcr_class(p.BufferCacheHitRatio));
+        topRow += '<div style="margin-top:12px;">';
+        topRow += '<div class="server-info-row"><span class="sil">Page Life Expectancy</span>' +
+        '<span class="badge ' + pleBadge[1] + '" title="' + p.PageLifeExpectancy + 's">' + pleBadge[0] + '</span></div>';
+        topRow += '<div class="server-info-row"><span class="sil">Batch Requests/sec</span><span class="siv">' + fmt(p.BatchRequestsPerSec, 0) + '</span></div>';
+        topRow += '<div class="server-info-row"><span class="sil">Active Connections</span><span class="siv">' + p.ActiveConnections + '</span></div>';
+        topRow += '<div class="server-info-row"><span class="sil">Blocked Processes</span><span class="siv" style="color:' + (p.BlockedProcesses > 0 ? 'var(--red)' : 'var(--green)') + '">' + p.BlockedProcesses + '</span></div>';
+        topRow += '<div class="server-info-row"><span class="sil">Top Wait Type</span><span class="wait-badge">' + escHtml(p.TopWaitType || '—') + '</span></div>';
+        topRow += '</div></div></div>';
+
+        topRow += '</div>';
+
+        // ── Jobs Panel ──
+        var jobsHtml = '<div class="panel" style="margin-bottom:12px;">' +
+        '<div class="panel-header teal-accent"><span class="panel-title" style="color:var(--teal);">SQL Agent Jobs</span>' +
+        '<span class="panel-badge teal">' + jobs.length + ' jobs / ' +
+        '<span style="color:var(--red)">' + failedJobs + ' failed</span>' +
+        (runningJobs > 0 ? ' / <span style="color:var(--blue)">' + runningJobs + ' running</span>' : '') +
+        '</span></div>' +
+        '<div class="scroll-panel">' +
+        '<table class="data-table">' +
+        '<thead><tr>' +
+        '<th>Job Name</th><th>Status</th><th>Last Run</th><th>Duration</th>' +
+        '<th>Next Run</th>' +
+        '</tr></thead><tbody>';
+
+        if (jobs.length === 0) {
+        jobsHtml += '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">No jobs found or SQL Agent not running</td></tr>';
+        } else {
+        jobs.forEach(function (j) {
+        var badgeCls = j.LastRunStatus === 1 ? 'badge-ok'
+        : j.LastRunStatus === 0 ? 'badge-fail'
+        : j.LastRunStatus === 4 ? 'badge-running'
+        : !j.Enabled ? 'badge-disabled'
+        : 'badge-unknown';
+        var statusText = j.LastRunStatus === 1 ? 'OK'
+        : j.LastRunStatus === 0 ? 'FAILED'
+        : j.LastRunStatus === 4 ? 'RUNNING'
+        : j.LastRunStatus === 3 ? 'CANCELLED'
+        : !j.Enabled ? 'DISABLED'
+        : 'UNKNOWN';
+
+        var rowStyle = j.LastRunStatus === 0 ? ' style="background:rgba(231,76,60,0.04);"' : '';
+        jobsHtml += '<tr' + rowStyle + '>' +
+        '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--teal);cursor:pointer;text-decoration:underline dotted;" ' +
+        'onclick="cerberus.showJobHistory(\'' + escHtml(inst.InstanceKey) + '\',\'' + j.JobId + '\',\'' + escHtml(j.JobName) + '\')" ' +
+        'title="Click to view history">' + escHtml(j.JobName) + '</td>' +
+        '<td><span class="badge ' + badgeCls + '">' + statusText + '</span></td>' +
+        '<td style="white-space:nowrap;">' + fmtDate(j.LastRunDateTime) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtDuration(j.LastRunDurationSeconds) + '</td>' +
+        '<td style="white-space:nowrap;">' + fmtDate(j.NextRunDateTime) + '</td>' +
+        '</tr>';
+        });
+        }
+
+        jobsHtml += '</tbody></table></div></div>';
+
+        // ── Blocking Panel ──
+        var midRow = '';
+
+        midRow += '<div class="panel" style="margin-bottom:12px;"><div class="panel-header teal-accent"><span class="panel-title" style="color:var(--teal);">Blocking / Long Waits</span>' +
+        '<span class="panel-badge teal" style="' + (blocked.length > 0 ? 'color:var(--red);border-color:var(--red-dim)' : '') + '">' + blocked.length + '</span>' +
+        '</div><div class="scroll-panel">' +
+        '<table class="data-table"><thead><tr>' +
+        '<th>SPID</th><th>Blocked By</th><th>DB</th><th>Wait</th><th>Wait ms</th><th>SQL</th>' +
+        '</tr></thead><tbody>';
+
+        if (blocked.length === 0) {
+        midRow += '<tr><td colspan="6" style="text-align:center;color:var(--green);padding:20px;">✓ No blocking detected</td></tr>';
+        } else {
+        blocked.forEach(function (b) {
+        midRow += '<tr>' +
+        '<td style="font-family:var(--font-mono);">' + b.SessionId + '</td>' +
+        '<td style="font-family:var(--font-mono);color:var(--red);">' + (b.BlockingSessionId > 0 ? b.BlockingSessionId : '—') + '</td>' +
+        '<td>' + escHtml(b.DatabaseName) + '</td>' +
+        '<td style="font-family:var(--font-mono);font-size:10px;">' + escHtml(b.WaitType) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + b.WaitTimeMs + '</td>' +
+        '<td><span class="sql-text" title="' + escHtml(b.SqlText) + '">' + escHtml(b.SqlText) + '</span></td>' +
+        '</tr>';
+        });
+        }
+
+        midRow += '</tbody></table></div></div>';
+
+        // ── Expensive Queries Panel ──
+        var expensiveQueries = inst.ExpensiveQueries || [];
+        midRow += '<div class="panel" style="margin-bottom:12px;"><div class="panel-header teal-accent"><span class="panel-title" style="color:var(--teal);">Recent Expensive Queries</span>' +
+        '<span class="panel-badge teal">Last 15 minutes</span>' +
+        '</div><div class="scroll-panel">' +
+        '<table class="data-table"><thead><tr>' +
+        '<th>Avg Elapsed</th><th>DB</th><th>Exec Count</th><th>Total CPU ms</th><th>Avg CPU ms</th><th>Last Exec</th><th>Query</th>' +
+        '</tr></thead><tbody>';
+
+        if (expensiveQueries.length === 0) {
+        midRow += '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px;">No expensive queries in the last 15 minutes</td></tr>';
+        } else {
+        expensiveQueries.slice().sort(function (a, b) {
+        var aHot = a.ExecutionCount >= 1000 ? 1 : 0;
+        var bHot = b.ExecutionCount >= 1000 ? 1 : 0;
+        if (aHot !== bHot) return bHot - aHot;
+        return (b.AvgElapsedMs || 0) - (a.AvgElapsedMs || 0);
+        }).forEach(function (q) {
+        var elapsedClass = q.TotalElapsedMs > 10000 ? 'crit' : q.TotalElapsedMs > 5000 ? 'warn' : 'ok';
+        var avgElapsedClass = q.AvgElapsedMs > 5000 ? 'crit' : q.AvgElapsedMs > 1000 ? 'warn' : 'ok';
+        var cpuClass = q.TotalCpuMs > 10000 ? 'crit' : q.TotalCpuMs > 5000 ? 'warn' : 'ok';
+        midRow += '<tr>' +
+        '<td style="font-family:var(--font-mono);color:var(--' + avgElapsedClass + ');">' + fmtElapsedMs(q.AvgElapsedMs) + '</td>' +
+        '<td style="white-space:nowrap;">' + escHtml(q.DatabaseName) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + q.ExecutionCount.toLocaleString() + '</td>' +
+        '<td style="font-family:var(--font-mono);color:var(--' + cpuClass + ');">' + fmt(q.TotalCpuMs, 0) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmt(q.AvgCpuMs, 1) + '</td>' +
+        '<td style="font-family:var(--font-mono);font-size:11px;white-space:nowrap;">' + fmtDate(q.LastExecutionTime) + '</td>' +
+        '<td><span class="sql-text" ' +
+        'style="cursor:pointer;color:var(--teal);text-decoration:underline dotted;" ' +
+        'data-instance="' + escHtml(inst.InstanceKey) + '" ' +
+        'data-planhandle="' + escHtml(q.PlanHandle || '') + '" ' +
+        'onclick="cerberus.showQueryPlan(this)" ' +
+        'title="Click to view execution plan">' +
+        escHtml(q.QueryText) + '</span></td>' +
+        '</tr>';
+        });
+        }
+
+        midRow += '</tbody></table></div></div>';
+
+        // ── Active Queries Panel (sorted by AvgElapsedMs desc, TotalElapsed removed) ──
+        var longRunning = recentQueries.filter(function (q) { return q.TotalElapsedMs >= 5000; }).length;
+
+        var recentHtml = '<div class="panel" style="margin-bottom:12px;">' +
+        '<div class="panel-header teal-accent">' +
+        '<span class="panel-title" style="color:var(--teal);">Active Queries</span>' +
+        '<div style="display:flex;gap:8px;align-items:center;">' +
+        (longRunning > 0
+        ? '<span class="panel-badge" style="color:var(--red);border-color:var(--red-dim);">' + longRunning + ' long-running</span>'
+        : '') +
+        '<span class="panel-badge teal">' + recentQueries.length + '</span>' +
+        '</div>' +
+        '</div>' +
+        '<div class="scroll-panel">' +
+        '<table class="data-table"><thead><tr>' +
+        '<th>Avg Elapsed</th>' +
+        '<th>DB</th>' +
+        '<th>Exec Count</th>' +
+        '<th>Total CPU ms</th>' +
+        '<th>Avg CPU ms</th>' +
+        '<th>Last Exec</th>' +
+        '<th>Query</th>' +
+        '</tr></thead><tbody>';
+
+        if (recentQueries.length === 0) {
+        recentHtml += '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px;">No queries with elapsed time > 300ms in last 24h</td></tr>';
+        } else {
+        recentQueries.slice().sort(function (a, b) {
+        var aHot = a.ExecutionCount >= 1000 ? 1 : 0;
+        var bHot = b.ExecutionCount >= 1000 ? 1 : 0;
+        if (aHot !== bHot) return bHot - aHot;
+        return (b.AvgElapsedMs || 0) - (a.AvgElapsedMs || 0);
+        }).forEach(function (q) {
+        var avgElapsedClass = q.AvgElapsedMs > 5000 ? 'crit' : q.AvgElapsedMs > 1000 ? 'warn' : 'ok';
+
+        recentHtml += '<tr>' +
+        '<td style="font-family:var(--font-mono);font-weight:700;color:var(--' + avgElapsedClass + ');">' + fmtElapsedMs(q.AvgElapsedMs) + '</td>' +
+        '<td style="white-space:nowrap;">' + escHtml(q.DatabaseName || '—') + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + q.ExecutionCount.toLocaleString() + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmt(q.TotalCpuMs, 0) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmt(q.AvgCpuMs, 1) + '</td>' +
+        '<td style="white-space:nowrap;font-size:11px;font-family:var(--font-mono);">' + fmtDate(q.LastExecuted) + '</td>' +
+        '<td><span class="sql-text" ' +
+        'style="cursor:pointer;color:var(--teal);text-decoration:underline dotted;" ' +
+        'data-instance="' + escHtml(inst.InstanceKey) + '" ' +
+        'data-planhandle="' + escHtml(q.PlanHandle || '') + '" ' +
+        'onclick="cerberus.showQueryPlan(this)" ' +
+        'title="Click to view execution plan">' +
+        escHtml(q.QueryText) + '</span></td>' +
+        '</tr>';
+        });
+        }
+
+        recentHtml += '</tbody></table></div></div>';
+
+        // ── Data File I/O Statistics ──
+        var dataFileIO = inst.DataFileIO || [];
+        var fileIOHtml = '<div class="panel" style="margin-bottom:12px;">' +
+        '<div class="panel-header teal-accent"><span class="panel-title" style="color:var(--teal);">Data File I/O Statistics</span>' +
+        '<span class="panel-badge teal">' + dataFileIO.length + '</span></div>' +
+        '<div style="background:var(--bg-base);padding:8px 10px 4px;">' +
+        '<canvas id="fileio-chart-' + escHtml(inst.InstanceKey) + '" style="width:100%;height:230px;display:block;border-radius:2px;"></canvas>' +
+        '</div>' +
+        '<div class="scroll-panel">' +
+        '<table class="data-table"><thead><tr>' +
+        '<th>Database</th><th>File Name</th><th>Type</th><th>Size</th>' +
+        '<th>Reads</th><th>Writes</th><th>Read B/s</th><th>Write B/s</th><th>Read Latency</th><th>Write Latency</th>' +
+        '</tr></thead><tbody>';
+
+        if (dataFileIO.length === 0) {
+        var fileIOMsg = inst.DataFileIOError
+            ? '<span style="color:var(--red);">Query error: ' + escHtml(inst.DataFileIOError) + '</span>'
+            : 'No file I/O data available';
+        fileIOHtml += '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:20px;">' + fileIOMsg + '</td></tr>';
+        } else {
+        dataFileIO.forEach(function (f) {
+        var readLatencyCls = f.AvgReadLatencyMs > 20 ? 'crit' : f.AvgReadLatencyMs > 10 ? 'warn' : 'ok';
+        var writeLatencyCls = f.AvgWriteLatencyMs > 20 ? 'crit' : f.AvgWriteLatencyMs > 10 ? 'warn' : 'ok';
+        var fileTypeCls = f.FileType === 'ROWS' ? 'badge-ok' : 'badge-unknown';
+
+        fileIOHtml += '<tr>' +
+        '<td style="font-weight:600;color:var(--text-primary);">' + escHtml(f.DatabaseName) + '</td>' +
+        '<td style="font-family:var(--font-mono);font-size:11px;cursor:pointer;color:var(--teal);text-decoration:underline dotted;" ' +
+        'onclick="cerberus.showFileDetail(\'' + escHtml(inst.InstanceKey) + '\',\'' + escHtml(f.DatabaseName) + '\',\'' + escHtml(f.FileName) + '\')" ' +
+        'title="Click to view I/O history">' + escHtml(f.FileName) + '</td>' +
+        '<td><span class="badge ' + fileTypeCls + '">' + escHtml(f.FileType) + '</span></td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtMb(f.SizeMb) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + f.NumReads.toLocaleString() + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + f.NumWrites.toLocaleString() + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtBytesPerSec(f.ReadBytesPerSec) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtBytesPerSec(f.WriteBytesPerSec) + '</td>' +
+        '<td style="font-family:var(--font-mono);color:var(--' + readLatencyCls + ');">' + fmt(f.AvgReadLatencyMs, 2) + ' ms</td>' +
+        '<td style="font-family:var(--font-mono);color:var(--' + writeLatencyCls + ');">' + fmt(f.AvgWriteLatencyMs, 2) + ' ms</td>' +
+        '</tr>';
+        });
+        }
+
+        fileIOHtml += '</tbody></table></div></div>';
+
+        // ── Hot Tables ──
+        var hotTables = inst.HotTables || [];
+        var hotTablesHtml = '<div class="panel" style="margin-bottom:12px;">' +
+        '<div class="panel-header teal-accent"><span class="panel-title" style="color:var(--teal);">Hot Tables</span>' +
+        '<span class="panel-badge teal">' + hotTables.length + '</span>' +
+        '<span style="font-size:10px;color:var(--text-muted);margin-left:auto;padding-right:4px;">DML rates over last refresh interval &mdash; first refresh shows no data</span>' +
+        '</div>' +
+        '<div class="scroll-panel">' +
+        '<table class="data-table"><thead><tr>' +
+        '<th>Database</th><th>Schema.Table</th>' +
+        '<th title="Inserts per second">Ins/s</th>' +
+        '<th title="Updates per second">Upd/s</th>' +
+        '<th title="Deletes per second">Del/s</th>' +
+        '<th title="Total DML per second">DML/s</th>' +
+        '<th title="Reads (scans + lookups) per second">Reads/s</th>' +
+        '<th title="Average row-lock wait time during the interval">Row Lock Avg ms</th>' +
+        '<th title="Average page-lock wait time during the interval">Page Lock Avg ms</th>' +
+        '</tr></thead><tbody>';
+
+        if (hotTables.length === 0) {
+        var hotTablesMsg = inst.HotTablesError
+            ? '<span style="color:var(--red);">Query error: ' + escHtml(inst.HotTablesError) + '</span>'
+            : 'No DML activity detected &mdash; data appears after the second refresh cycle';
+        hotTablesHtml += '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px;">' + hotTablesMsg + '</td></tr>';
+        } else {
+        hotTables.forEach(function (t) {
+        var dmlCls = t.TotalDmlPerSec > 1000 ? 'crit' : t.TotalDmlPerSec > 100 ? 'warn' : 'ok';
+        var rowLockCls = t.AvgRowLockWaitMs > 100 ? 'crit' : t.AvgRowLockWaitMs > 10 ? 'warn' : 'ok';
+        var pageLockCls = t.AvgPageLockWaitMs > 100 ? 'crit' : t.AvgPageLockWaitMs > 10 ? 'warn' : 'ok';
+        var fmtRate = function(v) { return v > 0 ? v.toLocaleString(undefined, {maximumFractionDigits:1}) : '<span style="color:var(--text-muted)">—</span>'; };
+        var fmtLock = function(v, cls) {
+            return v > 0
+                ? '<span style="color:var(--' + cls + ');">' + v.toLocaleString(undefined, {maximumFractionDigits:1}) + '</span>'
+                : '<span style="color:var(--text-muted)">—</span>';
+        };
+
+        var tableLabel = escHtml(t.SchemaName + '.' + t.TableName);
+        var tableCell = t.IsPartitioned
+            ? '<span style="cursor:pointer;color:var(--teal);text-decoration:underline dotted;" ' +
+              'title="Click to view partitions" ' +
+              'onclick="cerberus.showPartitions(' +
+                  '\'' + escHtml(inst.InstanceKey) + '\',' +
+                  '\'' + escHtml(t.DatabaseName)  + '\',' +
+                  '\'' + escHtml(t.SchemaName)    + '\',' +
+                  '\'' + escHtml(t.TableName)     + '\')">' + tableLabel + ' &#9660;</span>'
+            : '<span style="color:var(--text-secondary);">' + tableLabel + '</span>';
+
+        hotTablesHtml += '<tr>' +
+        '<td style="font-weight:600;color:var(--text-primary);">' + escHtml(t.DatabaseName) + '</td>' +
+        '<td style="font-family:var(--font-mono);font-size:11px;">' + tableCell + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtRate(t.InsertsPerSec) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtRate(t.UpdatesPerSec) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtRate(t.DeletesPerSec) + '</td>' +
+        '<td style="font-family:var(--font-mono);font-weight:600;color:var(--' + dmlCls + ');">' + fmtRate(t.TotalDmlPerSec) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtRate(t.ReadsPerSec) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtLock(t.AvgRowLockWaitMs, rowLockCls) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtLock(t.AvgPageLockWaitMs, pageLockCls) + '</td>' +
+        '</tr>';
+        });
+        }
+
+        hotTablesHtml += '</tbody></table></div></div>';
+
+        // ── Databases Panel ──
+        var dbHtml = '<div class="panel">' +
+        '<div class="panel-header teal-accent"><span class="panel-title" style="color:var(--teal);">Databases</span>' +
+        '<span class="panel-badge teal">' + dbs.length + '</span></div>' +
+        '<div class="scroll-panel">' +
+        '<table class="data-table"><thead><tr>' +
+        '<th>Name</th><th>Status</th><th>Drive</th><th>Recovery</th><th>Data Size</th><th>Log Size</th>' +
+        '<th>Last Full Backup</th><th>Last Log Backup</th>' +
+        '</tr></thead><tbody>';
+
+        if (dbs.length === 0) {
+        dbHtml += '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px;">No user databases found</td></tr>';
+        } else {
+        dbs.forEach(function (db) {
+        var backupAge = db.LastBackupDate ? Math.floor((new Date() - new Date(db.LastBackupDate)) / 3600000) : null;
+        var backupCls = backupAge == null ? 'badge-unknown' : backupAge > 26 ? 'badge-fail' : 'badge-ok';
+        var statusCls = db.Status === 'ONLINE' ? 'badge-ok' : 'badge-fail';
+
+        dbHtml += '<tr>' +
+        '<td style="color:var(--text-primary);font-weight:600;">' + escHtml(db.Name) + '</td>' +
+        '<td><span class="badge ' + statusCls + '">' + escHtml(db.Status) + '</span></td>' +
+        '<td style="font-family:var(--font-mono);font-weight:600;color:var(--accent);">' + (db.DataDrive ? escHtml(db.DataDrive) + ':' : '—') + '</td>' +
+        '<td style="color:var(--text-muted);">' + escHtml(db.RecoveryModel) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtMb(db.SizeMb) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtMb(db.LogSizeMb) + '</td>' +
+        '<td><span class="badge ' + backupCls + '">' + (db.LastBackupDate ? fmtDate(db.LastBackupDate) : 'NEVER') + '</span></td>' +
+        '<td>' + fmtDate(db.LastLogBackupDate) + '</td>' +
+        '</tr>';
+        });
+        }
+
+        dbHtml += '</tbody></table></div></div>';
+
+        return kpi + topRow + jobsHtml + midRow + recentHtml + fileIOHtml + hotTablesHtml + dbHtml;
+        }
+
+        // ─── Helper builders ──────────────────────────────────────────────────────
+        function kpiCard(label, value, colorCls, sub, barCls) {
+        return '<div class="kpi-card ' + colorCls + '">' +
+        '<div class="kpi-label">' + label + '</div>' +
+        '<div class="kpi-value">' + value + '</div>' +
+        '<div class="kpi-sub">' + sub + '</div>' +
+        '</div>';
+        }
+
+        function sRow(label, value) {
+        return '<div class="server-info-row"><span class="sil">' + label + '</span><span class="siv">' + value + '</span></div>';
+        }
+
+        function perfRow(label, pct, cls) {
+        return '<div style="margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">' +
+        '<span class="sil">' + label + '</span></div>' +
+        bar(pct, cls) + '</div>';
+        }
+
+        // ─── Tab switching ────────────────────────────────────────────────────────
+        window.cerberus = {
+        switchTab: function (key) {
+        currentInstance = key;
+        if (latestSnapshot) {
+        var html = buildDashboard(latestSnapshot);
+        document.getElementById('dashboard').innerHTML = html;
+        }
+        if (typeof connection !== 'undefined') invokeMonitor('SetActiveInstance', key);
+        },
+
+        showJobHistory: function (instanceKey, jobId, jobName) {
+        document.getElementById('modal-job-name').textContent = jobName + ' — History';
+        document.getElementById('modal-job-body').innerHTML =
+        '<div class="skeleton-line"></div><div class="skeleton-line"></div>';
+        document.getElementById('job-history-modal').classList.add('open');
+        cerberus._signalrConnection.invoke("RequestJobHistory", instanceKey, jobId);
+        },
+
+        showJobHistoryFromEl: function (el) {
+        var instanceKey = el.getAttribute('data-instance');
+        var jobId = el.getAttribute('data-jobid');
+        var jobName = el.getAttribute('data-jobname');
+        cerberus.showJobHistory(instanceKey, jobId, jobName);
+        },
+
+        closeJobHistory: function () {
+        document.getElementById('job-history-modal').classList.remove('open');
+        },
+
+        showQueryPlan: function (el) {
+        var instanceKey = el.getAttribute('data-instance');
+        var planHandle = el.getAttribute('data-planhandle');
+
+        if (!planHandle) {
+        alert('No execution plan available for this query.');
+        return;
+        }
+
+        document.getElementById('modal-plan-title').textContent = 'Execution Plan — Loading...';
+        document.getElementById('modal-plan-body').innerHTML =
+        '<div class="skeleton-line"></div><div class="skeleton-line"></div>';
+        document.getElementById('plan-download-link').style.display = 'none';
+        document.getElementById('query-plan-modal').classList.add('open');
+
+        cerberus._signalrConnection.invoke("RequestQueryPlan", instanceKey, planHandle);
+        },
+
+        closeQueryPlan: function () {
+        document.getElementById('query-plan-modal').classList.remove('open');
+        },
+
+        showActiveSessions: function (instanceKey) {
+        document.getElementById('modal-sessions-title').textContent = 'Active Sessions — ' + instanceKey;
+        document.getElementById('modal-sessions-body').innerHTML =
+        '<div class="skeleton-line"></div><div class="skeleton-line"></div>';
+        document.getElementById('active-sessions-modal').classList.add('open');
+        cerberus._signalrConnection.invoke("RequestActiveSessions", instanceKey);
+        },
+
+        closeActiveSessions: function () {
+        document.getElementById('active-sessions-modal').classList.remove('open');
+        },
+
+        showPartitions: function (instanceKey, dbName, schemaName, tableName) {
+        document.getElementById('modal-partitions-title').textContent =
+            dbName + ' • ' + schemaName + '.' + tableName;
+        document.getElementById('modal-partitions-body').innerHTML =
+            '<div class="skeleton-line"></div><div class="skeleton-line"></div>';
+        document.getElementById('partitions-modal').classList.add('open');
+        cerberus._signalrConnection.invoke(
+            'RequestPartitionInfo', instanceKey, dbName, schemaName, tableName);
+        },
+
+        closePartitions: function () {
+        document.getElementById('partitions-modal').classList.remove('open');
+        },
+
+        showFileDetail: function (instanceKey, dbName, fileName) {
+        var modal = document.getElementById('file-detail-modal');
+        modal.setAttribute('data-instance', instanceKey);
+        modal.setAttribute('data-db', dbName);
+        modal.setAttribute('data-file', fileName);
+        document.getElementById('modal-filedetail-title').textContent =
+            instanceKey + ' › ' + dbName + ' › ' + fileName;
+        modal.classList.add('open');
+        cerberus._drawFileDetailChart();
+        },
+
+        closeFileDetail: function () {
+        document.getElementById('file-detail-modal').classList.remove('open');
+        },
+
+        _drawFileDetailChart: function () {
+        var modal = document.getElementById('file-detail-modal');
+        if (!modal.classList.contains('open')) return;
+        var instanceKey = modal.getAttribute('data-instance');
+        var dbName      = modal.getAttribute('data-db');
+        var fileName    = modal.getAttribute('data-file');
+        var fk = dbName + '|' + fileName;
+        var canvas = document.getElementById('modal-filedetail-canvas');
+        if (!canvas) return;
+        var pL = 76, pR = 82;
+        var getHist = function () { return ((_fileIOPerFile[instanceKey] || {})[fk]) || []; };
+        drawIOHistoryChart(canvas, getHist(), null);
+        canvas.style.cursor = 'crosshair';
+        canvas.onmousemove = function (e) {
+            var rect = canvas.getBoundingClientRect();
+            var frac = Math.max(0, Math.min(1, (e.clientX - rect.left - pL) / (canvas.offsetWidth - pL - pR)));
+            drawIOHistoryChart(canvas, getHist(), frac);
+        };
+        canvas.onmouseleave = function () {
+            drawIOHistoryChart(canvas, getHist(), null);
+        };
+        },
+
+        downloadPlan: function () {
+        var xml = document.getElementById('query-plan-modal')
+        .getAttribute('data-plan-xml');
+        if (!xml) return;
+        var blob = new Blob([xml], { type: 'application/xml' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'query_plan.sqlplan';
+        a.click();
+        }
+        };
+
+        // ─── SignalR ──────────────────────────────────────────────────────────────
+        var connection = new signalR.HubConnectionBuilder()
+        .withUrl("/signalr/monitorHub")
+        .withAutomaticReconnect()
+        .build();
+
+        function invokeMonitor() {
+        if (estateReloading || connection.state !== signalR.HubConnectionState.Connected) return Promise.resolve();
+        return connection.invoke.apply(connection, arguments).catch(function () {
+            document.getElementById('status-dot').className = 'pulse-dot error';
+            document.getElementById('status-text').textContent = 'Request failed — refresh the dashboard';
+        });
+        }
+
+        cerberus._signalrConnection = { invoke: invokeMonitor };
+
+        function updateEstateControl() {
+        document.getElementById('estate-select').disabled = estateReloading || estateSwitchPending ||
+            !estateState || estateState.Estates.length < 2 || connection.state !== signalR.HubConnectionState.Connected;
+        }
+
+        function reloadEstate() {
+        estateReloading = true;
+        updateEstateControl();
+        document.getElementById('dashboard').style.display = 'none';
+        document.querySelectorAll('.modal-overlay.open').forEach(function (modal) { modal.classList.remove('open'); });
+        document.getElementById('estate-message').textContent = 'Estate changed. Reloading dashboard...';
+        window.location.reload();
+        }
+
+        connection.on('receiveEstateState', function (state, connectionInitialized) {
+        if (estateReloading) return;
+        if (estateState) {
+            if (state.SessionId !== estateState.SessionId || state.Revision > estateState.Revision ||
+                (connectionInitialized && state.Revision !== estateState.Revision)) {
+                reloadEstate();
+                return;
+            }
+            if (state.Revision < estateState.Revision) return;
+        }
+        estateState = state;
+        var select = document.getElementById('estate-select');
+        select.replaceChildren();
+        state.Estates.forEach(function (estate) {
+            var option = document.createElement('option');
+            option.value = estate.Key;
+            option.textContent = estate.DisplayName;
+            select.appendChild(option);
+        });
+        select.value = state.ActiveEstate;
+        updateEstateControl();
+        });
+
+        document.getElementById('estate-form').addEventListener('submit', function (event) { event.preventDefault(); });
+        document.getElementById('estate-select').addEventListener('change', async function () {
+        if (!estateState || estateSwitchPending || estateReloading) return;
+        var select = this;
+        var form = document.getElementById('estate-form');
+        var data = new FormData(form);
+        data.set('revision', estateState.Revision);
+        data.set('sessionId', estateState.SessionId);
+        estateSwitchPending = true;
+        updateEstateControl();
+        document.getElementById('estate-message').textContent = 'Switching estate for all users...';
+        try {
+            var response = await fetch(form.action, { method: 'POST', body: data, credentials: 'same-origin' });
+            if (response.status === 409 || response.ok) {
+                reloadEstate();
+                return;
+            }
+            throw new Error('Estate selection was rejected.');
+        } catch (error) {
+            select.value = estateState.ActiveEstate;
+            document.getElementById('estate-message').textContent = 'Could not switch estate. Refresh to confirm the active estate before retrying.';
+        } finally {
+            estateSwitchPending = false;
+            updateEstateControl();
+        }
+        });
+
+        function onEstateEvent(name, handler) {
+        connection.on(name, function () {
+            var args = Array.prototype.slice.call(arguments);
+            var revision = args.pop();
+            if (!estateState || estateReloading || revision !== estateState.Revision) return;
+            handler.apply(null, args);
+        });
+        }
+
+        onEstateEvent("receiveQueryPlan", function (plan) {
+        var modal = document.getElementById('query-plan-modal');
+        var body = document.getElementById('modal-plan-body');
+        var title = document.getElementById('modal-plan-title');
+        var dlLink = document.getElementById('plan-download-link');
+
+        if (plan.ErrorMessage) {
+        title.textContent = 'Execution Plan \u2014 Error';
+        body.innerHTML = '<p style="color:var(--red);padding:20px;font-family:var(--font-mono);">' +
+        escHtml(plan.ErrorMessage) + '</p>';
+        return;
+        }
+
+        if (!plan.PlanXml) {
+        title.textContent = 'Execution Plan \u2014 Not Available';
+        body.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No cached plan found for this query. ' +
+        'The plan may have been evicted from cache.</p>';
+        return;
+        }
+
+        modal.setAttribute('data-plan-xml', plan.PlanXml);
+        dlLink.style.display = 'inline';
+        title.textContent = 'Execution Plan';
+
+        try {
+        var parser = new DOMParser();
+        var xmlDoc = parser.parseFromString(plan.PlanXml, 'text/xml');
+        var relOps = xmlDoc.getElementsByTagName('RelOp');
+        var nodes = [];
+
+        for (var i = 0; i < relOps.length; i++) {
+        var op = relOps[i];
+        var opName = op.getAttribute('PhysicalOp') || op.getAttribute('LogicalOp') || 'Unknown';
+        var cost = parseFloat(op.getAttribute('EstimatedTotalSubtreeCost') || '0');
+        var rows = parseFloat(op.getAttribute('EstimateRows') || '0');
+        var executions = parseFloat(op.getAttribute('EstimateExecutions') || '1');
+        nodes.push({ opName: opName, cost: cost, rows: rows, executions: executions });
+        }
+
+        nodes.sort(function (a, b) { return b.cost - a.cost; });
+        var maxCost = nodes.length > 0 ? nodes[0].cost : 1;
+
+        var html = '<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--text-muted);">Showing top ' +
+        Math.min(nodes.length, 20) + ' operations by cost. Download .sqlplan to open in SSMS for full graphical plan.</span></div>';
+
+        html += '<table class="data-table" style="margin-bottom:16px;"><thead><tr>' +
+        '<th>Operation</th><th>Est. Cost</th><th>Cost %</th><th>Est. Rows</th><th>Executions</th>' +
+        '</tr></thead><tbody>';
+
+        nodes.slice(0, 20).forEach(function (n) {
+        var pct = maxCost > 0 ? (n.cost / maxCost * 100) : 0;
+        var barColor = pct >= 50 ? 'var(--red)' : pct >= 20 ? 'var(--yellow)' : 'var(--green)';
+        html += '<tr><td style="font-family:var(--font-mono);font-size:11px;">' + escHtml(n.opName) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + n.cost.toFixed(4) + '</td>' +
+        '<td><div class="metric-bar-wrap"><div class="metric-bar-track">' +
+        '<div class="metric-bar-fill" style="width:' + pct.toFixed(1) + '%;background:' + barColor + '"></div>' +
+        '</div><span class="metric-bar-val">' + pct.toFixed(1) + '%</span></div></td>' +
+        '<td style="font-family:var(--font-mono);">' + Math.round(n.rows) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + Math.round(n.executions) + '</td></tr>';
+        });
+
+        html += '</tbody></table>';
+        html += '<div style="margin-bottom:8px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;">Query Text</div>';
+        html += '<div class="plan-xml" style="max-height:120px;">' + escHtml(plan.QueryText || '') + '</div>';
+        body.innerHTML = html;
+        } catch (err) {
+        body.innerHTML = '<div class="plan-xml">' + escHtml(plan.PlanXml) + '</div>';
+        }
+        });
+
+        onEstateEvent("receiveProgress", function (message, pct) {
+        var bar = document.getElementById('load-bar');
+        var step = document.getElementById('load-step');
+        var log = document.getElementById('load-log');
+
+        if (bar) bar.style.width = Math.max(2, pct) + '%';
+        if (step) step.textContent = message;
+
+        if (log) {
+        var line = document.createElement('div');
+        line.textContent = message;
+        if (message.indexOf('\u2713') !== -1) {
+        line.style.color = 'var(--green)';
+        } else if (message.indexOf('\u2192') !== -1) {
+        line.style.color = 'var(--text-muted)';
+        } else {
+        line.style.color = 'var(--text-secondary)';
+        }
+        log.appendChild(line);
+        log.scrollTop = log.scrollHeight;
+        }
+        });
+
+        // Live clock — ticks every second regardless of snapshot state
+        (function () {
+        var el = document.getElementById('last-updated');
+        var pad = function (n) { return n.toString().padStart(2, '0'); };
+        function tick() {
+            var now = new Date();
+            el.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+        }
+        tick();
+        setInterval(tick, 1000);
+        })();
+
+        var _countdownInterval = null;
+        var _refreshIntervalSec = 30;
+
+        function startCountdown(seconds) {
+        _refreshIntervalSec = seconds || 30;
+        var remaining = _refreshIntervalSec;
+        var el = document.getElementById('next-refresh');
+        if (_countdownInterval) clearInterval(_countdownInterval);
+        _countdownInterval = setInterval(function () {
+            remaining--;
+            if (remaining <= 0) {
+            el.textContent = 'next refresh: refreshing...';
+            } else {
+            el.textContent = 'next refresh: ' + remaining + 's';
+            }
+        }, 1000);
+        el.textContent = 'next refresh: ' + remaining + 's';
+        }
+
+        cerberus.manualRefresh = function () {
+        var el = document.getElementById('next-refresh');
+        el.textContent = 'next refresh: refreshing...';
+        if (_countdownInterval) clearInterval(_countdownInterval);
+        invokeMonitor("RequestInitialData");
+        };
+
+        onEstateEvent("receiveSnapshot", function (snapshot) {
+        var dot = document.getElementById('status-dot');
+        var statusText = document.getElementById('status-text');
+        var loading = document.getElementById('loading-state');
+        var dashboard = document.getElementById('dashboard');
+
+        dot.className = 'pulse-dot ok';
+        statusText.textContent = 'Live';
+
+        // Merge partial (single-instance background refresh) into the cached full snapshot
+        if (latestSnapshot && snapshot.Instances && snapshot.Instances.length === 1) {
+            var updated = snapshot.Instances[0];
+            for (var i = 0; i < latestSnapshot.Instances.length; i++) {
+                if (latestSnapshot.Instances[i].InstanceKey === updated.InstanceKey) {
+                    latestSnapshot.Instances[i] = updated;
+                    break;
+                }
+            }
+            snapshot = latestSnapshot;
+        }
+
+        loading.style.display = 'none';
+        dashboard.style.display = 'block';
+        dashboard.innerHTML = buildDashboard(snapshot);
+
+        // Update file I/O history and redraw charts
+        (snapshot.Instances || []).forEach(function (inst) {
+            if (inst.IsOnline) {
+                updateFileIOHistory(inst.InstanceKey, inst.DataFileIO || []);
+                updateFileIOPerFile(inst.InstanceKey, inst.DataFileIO || []);
+                drawFileIOChart(inst.InstanceKey);
+            }
+        });
+
+        // Register active instance with server after first render
+        if (currentInstance) invokeMonitor('SetActiveInstance', currentInstance);
+
+        startCountdown(snapshot.RefreshIntervalSeconds);
+        document.getElementById('footer-refresh').textContent = 'Refresh: ' + snapshot.RefreshIntervalSeconds + ' s';
+        });
+
+        onEstateEvent("receiveJobHistory", function (jobId, history) {
+        try {
+        if (!history || history.length === 0) {
+        document.getElementById('modal-job-body').innerHTML =
+        '<p style="color:var(--text-muted);text-align:center;padding:20px;">No history found.</p>';
+        return;
+        }
+        var html = '<table class="data-table" style="width:100%"><thead><tr>' +
+        '<th>Step</th><th>Step Name</th><th>Status</th><th>Run Time</th><th>Duration</th><th>Retries</th>' +
+        '</tr></thead><tbody>';
+        history.forEach(function (h) {
+        var isOutcome = h.StepId === 0;
+        var badgeCls = h.RunStatus === 'Succeeded' ? 'badge-ok' : h.RunStatus === 'Failed' ? 'badge-fail' : h.RunStatus === 'Retry' ? 'badge-unknown' : 'badge-disabled';
+        var rowStyle = isOutcome ? ' style="background:rgba(255,255,255,0.03);font-weight:600;"' : '';
+        html += '<tr' + rowStyle + '><td style="font-family:var(--font-mono);">' + (isOutcome ? 'OUT' : h.StepId) + '</td>' +
+        '<td>' + escHtml(h.StepName) + '</td>' +
+        '<td><span class="badge ' + badgeCls + '">' + escHtml(h.RunStatus) + '</span></td>' +
+        '<td style="white-space:nowrap;font-family:var(--font-mono);">' + fmtDate(h.RunDateTime) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtDuration(h.DurationSeconds) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + h.RetriesAttempted + '</td></tr>';
+        if (h.Message) {
+        html += '<tr><td colspan="6"><div class="step-message">' + escHtml(h.Message) + '</div></td></tr>';
+        }
+        });
+        html += '</tbody></table>';
+        document.getElementById('modal-job-body').innerHTML = html;
+        } catch (err) {
+        console.error('renderJobHistory error:', err);
+        document.getElementById('modal-job-body').innerHTML = '<p style="color:var(--red);padding:20px;">Render error: ' + err.message + '</p>';
+        }
+        });
+
+        onEstateEvent("receiveActiveSessions", function (sessions) {
+        var body = document.getElementById('modal-sessions-body');
+        if (!sessions || sessions.length === 0) {
+        body.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">No active user sessions.</p>';
+        return;
+        }
+        var html = '<table class="data-table" style="width:100%"><thead><tr>' +
+        '<th>SPID</th><th>DB</th><th>Login</th><th>Host</th><th>Program</th><th>Status</th><th>Elapsed</th><th>CPU ms</th><th>Reads</th><th>Writes</th><th>Wait Type</th><th>Wait ms</th><th>Open Tx</th><th>Mem KB</th><th>Last Request</th><th>Query</th>' +
+        '</tr></thead><tbody>';
+        sessions.forEach(function (s) {
+        var st = (s.Status || '').toLowerCase();
+        var statusBadge = st === 'running' || st === 'runnable' ? '<span class="badge badge-running">' + escHtml(s.Status) + '</span>' :
+        st === 'sleeping' ? '<span class="badge badge-disabled">' + escHtml(s.Status) + '</span>' :
+        st === 'suspended' ? '<span class="badge badge-unknown">' + escHtml(s.Status) + '</span>' :
+        '<span class="badge badge-recent">' + escHtml(s.Status || '\u2014') + '</span>';
+        var blockedStyle = s.BlockingSessionId > 0 ? 'style="color:var(--red);font-weight:700;"' : '';
+        var rowStyle = s.BlockingSessionId > 0 ? ' style="background:rgba(231,76,60,0.04);"' : '';
+        html += '<tr' + rowStyle + '>' +
+        '<td style="font-family:var(--font-mono);" ' + blockedStyle + '>' + s.SessionId + (s.BlockingSessionId > 0 ? ' \u27f5' + s.BlockingSessionId : '') + '</td>' +
+        '<td>' + escHtml(s.DatabaseName) + '</td>' +
+        '<td style="white-space:nowrap;">' + escHtml(s.LoginName) + '</td>' +
+        '<td style="white-space:nowrap;font-size:11px;">' + escHtml(s.HostName) + '</td>' +
+        '<td style="font-size:10px;color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escHtml(s.ProgramName) + '">' + escHtml(s.ProgramName) + '</td>' +
+        '<td>' + statusBadge + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + fmtElapsedMs(s.ElapsedMs) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + s.CpuTime + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + (s.LogicalReads || 0).toLocaleString() + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + (s.Writes || 0) + '</td>' +
+        '<td style="font-family:var(--font-mono);font-size:10px;">' + escHtml(s.WaitType || '\u2014') + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + (s.WaitTimeMs || 0) + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + s.OpenTransactions + '</td>' +
+        '<td style="font-family:var(--font-mono);">' + (s.MemoryKb || 0).toLocaleString() + '</td>' +
+        '<td style="white-space:nowrap;font-size:11px;">' + fmtDate(s.LastRequestStart) + '</td>' +
+        '<td><span class="sql-text" title="' + escHtml(s.SqlText) + '">' + escHtml(s.SqlText) + '</span></td>' +
+        '</tr>';
+        });
+        html += '</tbody></table>';
+        body.innerHTML = html;
+        });
+
+        onEstateEvent("receivePartitionInfo", function (info) {
+        var body = document.getElementById('modal-partitions-body');
+        if (!info) { body.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">No data returned.</p>'; return; }
+        if (info.ErrorMessage) { body.innerHTML = '<p style="color:var(--red);padding:20px;">' + escHtml(info.ErrorMessage) + '</p>'; return; }
+
+        var meta = '<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;">' +
+            '<span><span style="color:var(--text-muted);">Function: </span><span style="font-family:var(--font-mono);color:var(--teal);">' + escHtml(info.PartitionFunction) + '</span></span>' +
+            '<span><span style="color:var(--text-muted);">Scheme: </span><span style="font-family:var(--font-mono);color:var(--teal);">' + escHtml(info.PartitionScheme) + '</span></span>' +
+            '<span><span style="color:var(--text-muted);">Column: </span><span style="font-family:var(--font-mono);color:var(--accent);">' + escHtml(info.PartitionColumn) + '</span></span>' +
+            '<span><span style="color:var(--text-muted);">Partitions: </span><span style="font-family:var(--font-mono);">' + (info.Ranges ? info.Ranges.length : 0) + '</span></span>' +
+        '</div>';
+
+        if (!info.Ranges || info.Ranges.length === 0) {
+            body.innerHTML = meta + '<p style="color:var(--text-muted);padding:20px;">No partitions found.</p>';
+            return;
+        }
+
+        var tbl = '<table class="data-table"><thead><tr>' +
+            '<th>#</th><th>Range Start</th><th>Range End</th><th>Row Count</th><th>Compression</th>' +
+            '</tr></thead><tbody>';
+
+        info.Ranges.forEach(function (r) {
+            var isLast  = r.PartitionNumber === info.Ranges.length;
+            var isFirst = r.PartitionNumber === 1;
+            var start = isFirst ? '<span style="color:var(--text-muted);">&#x2212;&#x221E;</span>'
+                : '<span style="font-family:var(--font-mono);">' + escHtml(r.RangeStart || '—') + '</span>';
+            var end = isLast ? '<span style="color:var(--text-muted);">+&#x221E;</span>'
+                : '<span style="font-family:var(--font-mono);">' + escHtml(r.RangeEnd || '—') + '</span>';
+            var compCls = r.Compression === 'NONE' ? 'color:var(--text-muted)' : 'color:var(--teal)';
+            tbl += '<tr>' +
+                '<td style="font-family:var(--font-mono);font-weight:600;">' + r.PartitionNumber + '</td>' +
+                '<td>' + start + '</td>' +
+                '<td>' + end + '</td>' +
+                '<td style="font-family:var(--font-mono);">' + (r.RowCount || 0).toLocaleString() + '</td>' +
+                '<td style="font-size:11px;' + compCls + ';">' + escHtml(r.Compression || '—') + '</td>' +
+            '</tr>';
+        });
+
+        tbl += '</tbody></table>';
+        body.innerHTML = meta + tbl;
+        });
+
+        onEstateEvent("receiveFileIOUpdate", function (instanceKey, fileIOData) {
+        updateFileIOPerFile(instanceKey, fileIOData || []);
+        // Also keep aggregate chart history current for non-active instances
+        updateFileIOHistory(instanceKey, fileIOData || []);
+        // Redraw per-file detail modal if it belongs to this instance
+        var modal = document.getElementById('file-detail-modal');
+        if (modal.classList.contains('open') &&
+            modal.getAttribute('data-instance') === instanceKey) {
+            cerberus._drawFileDetailChart();
+        }
+        });
+
+        onEstateEvent("receiveError", function (msg) {
+        document.getElementById('status-dot').className = 'pulse-dot error';
+        document.getElementById('status-text').textContent = 'Error';
+        console.error('SignalR error: ' + msg);
+        });
+
+        connection.onreconnecting(function () {
+        updateEstateControl();
+        document.getElementById('status-dot').className = 'pulse-dot error';
+        document.getElementById('status-text').textContent = 'Reconnecting...';
+        });
+
+        connection.onreconnected(function () {
+        updateEstateControl();
+        document.getElementById('status-dot').className = 'pulse-dot ok';
+        document.getElementById('status-text').textContent = 'Live';
+        invokeMonitor("RequestInitialData");
+        });
+
+        connection.onclose(function () {
+        updateEstateControl();
+        document.getElementById('status-dot').className = 'pulse-dot error';
+        document.getElementById('status-text').textContent = 'Disconnected \u2014 reconnecting...';
+        });
+
+        connection.start()
+        .then(function () {
+        updateEstateControl();
+        invokeMonitor("RequestInitialData");
+        })
+        .catch(function (err) {
+        document.getElementById('status-dot').className = 'pulse-dot error';
+        document.getElementById('status-text').textContent = 'Connection failed';
+        document.getElementById('loading-state').innerHTML =
+        '<p style="color:var(--red);font-family:var(--font-mono);">SignalR connection failed. Check WebSocket support.<br>' + err + '</p>';
+        });
+
+        })();
+    </script>
+
+    <!-- ── Job History Modal ──────────────────────────────────────────────── -->
+    <div class="modal-overlay" id="job-history-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="panel-title" id="modal-job-name">Job History</span>
+                <button class="modal-close" onclick="cerberus.closeJobHistory()">✕</button>
+            </div>
+            <div class="modal-body" id="modal-job-body">
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Query Execution Plan Modal ────────────────────────────────────── -->
+    <div class="modal-overlay" id="query-plan-modal">
+        <div class="modal" style="max-width:1400px;">
+            <div class="modal-header">
+                <span class="panel-title" id="modal-plan-title">Execution Plan</span>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <a id="plan-download-link"
+                       style="font-size:11px;color:var(--accent);cursor:pointer;display:none;"
+                       onclick="cerberus.downloadPlan()">
+                        ⬇ Download .sqlplan
+                    </a>
+                    <button class="modal-close" onclick="cerberus.closeQueryPlan()">✕</button>
+                </div>
+            </div>
+            <div class="modal-body" id="modal-plan-body">
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Active Sessions Modal ─────────────────────────────────────────── -->
+    <div class="modal-overlay" id="active-sessions-modal">
+        <div class="modal" style="max-width:1400px;">
+            <div class="modal-header">
+                <span class="panel-title" id="modal-sessions-title">Active Sessions</span>
+                <button class="modal-close" onclick="cerberus.closeActiveSessions()">✕</button>
+            </div>
+            <div class="modal-body" id="modal-sessions-body">
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── File I/O Detail Modal ───────────────────────────────────────── -->
+    <div class="modal-overlay" id="file-detail-modal">
+        <div class="modal" style="max-width:1100px;">
+            <div class="modal-header">
+                <span class="panel-title" id="modal-filedetail-title">File I/O History</span>
+                <button class="modal-close" onclick="cerberus.closeFileDetail()">✕</button>
+            </div>
+            <div class="modal-body" style="padding:12px;">
+                <canvas id="modal-filedetail-canvas" style="width:100%;height:340px;display:block;background:#0d0f14;border-radius:2px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Partitions Modal ──────────────────────────────────────────────── -->
+    <div class="modal-overlay" id="partitions-modal">
+        <div class="modal" style="max-width:900px;">
+            <div class="modal-header">
+                <span class="panel-title" id="modal-partitions-title">Partitions</span>
+                <button class="modal-close" onclick="cerberus.closePartitions()">✕</button>
+            </div>
+            <div class="modal-body" id="modal-partitions-body">
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

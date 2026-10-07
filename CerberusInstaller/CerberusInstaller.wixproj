@@ -1,0 +1,27 @@
+<Project Sdk="WixToolset.Sdk/7.0.0">
+  <PropertyGroup>
+	<AcceptEula>wix7</AcceptEula>
+	<OutputType>Package</OutputType>
+	<InstallerPlatform>x64</InstallerPlatform>
+	<InstallerVersion Condition="'$(InstallerVersion)' == ''">2.0.0</InstallerVersion>
+	<OutputName>CerberusDashboard-$(InstallerVersion)-win-x64</OutputName>
+	<OutputPath>bin\$(Configuration)\</OutputPath>
+	<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+	<_PayloadDirectory>$(MSBuildProjectDirectory)\obj\$(Configuration)\payload\</_PayloadDirectory>
+	<DefineConstants>$(DefineConstants);InstallerVersion=$(InstallerVersion);PayloadDirectory=$(_PayloadDirectory)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+	<PackageReference Include="WixToolset.Util.wixext" Version="7.0.0" />
+	<ProjectReference Include="..\CerberusDashboard.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <Target Name="PublishInstallerPayload" BeforeTargets="CoreCompile" DependsOnTargets="ResolveProjectReferences">
+	<Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(InstallerVersion)', '^\d+\.\d+\.\d+$'))"
+		   Text="InstallerVersion must contain exactly three numeric fields, for example 2.0.1." />
+	<RemoveDir Directories="$(_PayloadDirectory)" />
+	<Exec Command="dotnet publish &quot;$(MSBuildProjectDirectory)\..\CerberusDashboard.csproj&quot; --configuration &quot;$(Configuration)&quot; --runtime win-x64 --self-contained true --output &quot;$(_PayloadDirectory).&quot; -p:CerberusInstallerBuild=true -p:Version=$(InstallerVersion) -p:DebugType=None -p:DebugSymbols=false" />
+	<Copy SourceFiles="$(MSBuildProjectDirectory)\appsettings.json" DestinationFolder="$(_PayloadDirectory)" />
+	<Error Condition="!Exists('$(_PayloadDirectory)CerberusDashboard.exe')" Text="The published Windows service executable is missing." />
+	<Error Condition="!Exists('$(_PayloadDirectory)CerberusDashboard.runtimeconfig.json')" Text="The published runtime configuration is missing." />
+	<Error Condition="!Exists('$(_PayloadDirectory)wwwroot')" Text="The published web assets are missing." />
+  </Target>
+</Project>

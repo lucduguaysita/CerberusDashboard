@@ -1,0 +1,24 @@
+{
+	"// EXAMPLE CONFIGURATION": "Single local estate using SQL Server LocalDB. Copy to appsettings.json and adjust. To monitor additional environments, add another estate section with its own ConnectionStrings and set DefaultEstate to the estate key you want selected at startup. Supply credentials through protected deployment configuration, not this file.",
+	"DefaultEstate": "Local",
+	"Estates": {
+		"Local": {
+			"DisplayName": "Local",
+			"MonitorRefreshSeconds": 15,
+			"MonitoredInstances": "LocalDB",
+			"InstanceDisplayNames": "LocalDB",
+			"ConnectionStrings": {
+				"LocalDB": "Server=(local);Database=master;Integrated Security=True;TrustServerCertificate=True;Connection Timeout=15;"
+			}
+		}
+	},
+
+	"Logging": {
+		"LogLevel": {
+			"Default": "Information",
+			"Microsoft.AspNetCore": "Warning"
+		}
+	},
+	"Urls": "http://0.0.0.0:5001",
+	"AllowedHosts": "*"
+}

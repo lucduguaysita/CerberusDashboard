@@ -1,0 +1,82 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+	 xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Package Name="CerberusDashboard"
+		   Manufacturer="Cerberus Dashboard"
+		   Version="$(var.InstallerVersion)"
+		   UpgradeCode="59DF016C-5179-4652-B8E8-9C4141ED2E09"
+		   Language="1033"
+		   Scope="perMachine"
+		   InstallerVersion="500">
+	<MajorUpgrade DowngradeErrorMessage="A newer version of CerberusDashboard is already installed."
+				  Schedule="afterInstallInitialize" />
+	<MediaTemplate EmbedCab="yes" />
+	<Property Id="ARPNOMODIFY" Value="1" />
+
+	<Upgrade Id="F4B846FA-3846-4D71-8645-D5EABAA96B28">
+	  <UpgradeVersion Minimum="0.0.0" IncludeMinimum="yes" OnlyDetect="yes" Property="LEGACY_NESTED_INSTALLER" />
+	</Upgrade>
+	<Upgrade Id="2B67216B-3959-4E06-844E-BCB3E2E0EE44">
+	  <UpgradeVersion Minimum="0.0.0" IncludeMinimum="yes" OnlyDetect="yes" Property="LEGACY_ROOT_INSTALLER" />
+	</Upgrade>
+	<Launch Condition="Installed OR (NOT LEGACY_NESTED_INSTALLER AND NOT LEGACY_ROOT_INSTALLER)"
+			Message="Legacy CerberusDashboard detected. Back up appsettings.json and ProgramData data-protection keys, uninstall the legacy MSI, and verify CerberusDashboard service removal before installing. See CerberusInstaller/README.md." />
+	<Property Id="EXISTING_DASHBOARD_SERVICE" Secure="yes">
+	  <RegistrySearch Id="FindDashboardService" Root="HKLM"
+					  Key="SYSTEM\CurrentControlSet\Services\CerberusDashboard"
+					  Name="ImagePath" Type="raw" Bitness="always64" />
+	</Property>
+	<Launch Condition="Installed OR WIX_UPGRADE_DETECTED OR NOT EXISTING_DASHBOARD_SERVICE"
+			Message="A CerberusDashboard service already exists outside this WiX installation. Complete the manual legacy migration and verify service removal before installing." />
+
+	<StandardDirectory Id="ProgramFiles64Folder">
+	  <Directory Id="INSTALLFOLDER" Name="CerberusDashboard">
+		<Component Id="DashboardService" Guid="*" Bitness="always64">
+		  <File Id="ServiceExecutable" Source="$(var.PayloadDirectory)CerberusDashboard.exe" KeyPath="yes" />
+		  <ServiceInstall Id="InstallDashboardService"
+						  Name="CerberusDashboard"
+						  DisplayName="Cerberus Dashboard"
+						  Description="SQL Server Performance Monitor"
+						  Type="ownProcess"
+						  Start="auto"
+						  ErrorControl="normal"
+						  Account="LocalSystem"
+						  Vital="yes">
+			<util:ServiceConfig FirstFailureActionType="restart"
+								SecondFailureActionType="restart"
+								ThirdFailureActionType="restart"
+								RestartServiceDelayInSeconds="5"
+								ResetPeriodInDays="1" />
+		  </ServiceInstall>
+		  <ServiceControl Id="ControlDashboardService"
+						  Name="CerberusDashboard"
+						  Start="install"
+						  Stop="both"
+						  Remove="uninstall"
+						  Wait="yes" />
+		</Component>
+		<Component Id="DashboardConfiguration"
+				   Guid="94475D99-4E90-45DB-9D0B-26EDB68814F9"
+				   Bitness="always64"
+				   Permanent="yes"
+				   NeverOverwrite="yes">
+		  <File Id="DashboardSettings" Source="$(var.PayloadDirectory)appsettings.json" KeyPath="yes" />
+		</Component>
+	  </Directory>
+	</StandardDirectory>
+
+	<Feature Id="Dashboard" Title="CerberusDashboard" Level="1">
+	  <ComponentRef Id="DashboardService" />
+	  <ComponentRef Id="DashboardConfiguration" />
+	  <ComponentGroupRef Id="PublishedFiles" />
+	</Feature>
+  </Package>
+
+  <Fragment>
+	<ComponentGroup Id="PublishedFiles" Directory="INSTALLFOLDER">
+	  <Files Include="$(var.PayloadDirectory)**">
+		<Exclude Files="$(var.PayloadDirectory)CerberusDashboard.exe" />
+		<Exclude Files="$(var.PayloadDirectory)appsettings.json" />
+	  </Files>
+	</ComponentGroup>
+  </Fragment>
+</Wix>
