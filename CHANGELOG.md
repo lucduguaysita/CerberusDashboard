@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.0.0] - 2026-10-07
+
+First tagged release. The application and installer are unchanged in behaviour from the preceding work; this release establishes a versioned baseline after the repository was de-branded, documented, and republished.
+
 ### Added
 
 - Repository documentation: root `README.md`, `FAQ.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, MIT `LICENSE`, issue and pull request templates, and a CI workflow.
@@ -35,4 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 Versions before this repository's history was flattened are not itemised here. The project was migrated from .NET Framework 4.8 to .NET 8, then to .NET 10, and its installer moved from a Visual Studio Installer project to WiX 7 over that period.
 
-Installer versions are passed at build time (`-p:InstallerVersion=x.y.z`) and are independent of the entries above. Use exactly three numeric fields; major and minor are capped at 255 and build at 65535.
+Installer versions are passed at build time (`-p:InstallerVersion=x.y.z`). Use exactly three numeric fields; major and minor are capped at 255 and build at 65535. The MSI shipped with a release carries that release's version.
+
+[Unreleased]: https://github.com/lucduguaysita/CerberusDashboard/compare/1.0.0...HEAD
+[1.0.0]: https://github.com/lucduguaysita/CerberusDashboard/releases/tag/1.0.0

@@ -155,7 +155,7 @@ try
 {
     using var client = new HttpClient(new HttpClientHandler { CookieContainer = new CookieContainer() }) { BaseAddress = new Uri(app.Urls.Single()) };
     string html = await client.GetStringAsync("/");
-    Check(html.Contains("id=\"estate-select\"") && html.Contains("Shared by all dashboard users"), "Dashboard renders shared estate selector");
+    Check(html.Contains("id=\"estate-select\"") && html.Contains("Choose your estate"), "Dashboard renders shared estate selector");
     var tokenMatch = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"");
     Check(tokenMatch.Success, "Dashboard emits antiforgery token");
     string token = WebUtility.HtmlDecode(tokenMatch.Groups[1].Value);

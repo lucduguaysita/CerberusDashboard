@@ -4,6 +4,10 @@ A real-time SQL Server monitoring dashboard built on ASP.NET Core (.NET 10). It 
 
 The dashboard is self-contained: the MSI bundles the .NET runtime, and jQuery and the SignalR client ship in `wwwroot`, so no CDN or separately installed runtime is required on the target machine.
 
+![The Cerberus Dashboard monitoring a live SQL Server instance](docs/dashboard.png)
+
+<sub>Live capture. Server, database, job and query names are pixelated.</sub>
+
 > [!IMPORTANT]
 > The application has **no user authentication or role separation**. Anyone who can reach the endpoint can view monitoring data and switch the active estate for every other user. Keep it bound to `localhost` — or behind an authenticating reverse proxy — until appropriate network and authentication controls are in place.
 

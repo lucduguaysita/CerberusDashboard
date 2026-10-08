@@ -8,6 +8,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cerberus SQL Server Monitoring tool</title>
+    <link rel="icon" href="~/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="~/apple-touch-icon.png" />
     <style>
             /* ═══════════════════════════════════════════════════════════════
                        CERBERUS SQL MONITOR — Industrial / Utilitarian Dark Theme
@@ -845,6 +847,9 @@
     <!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
     <header class="header">
         <div class="header-logo">
+            <img src="~/Content/images/cerberus-logo.png"
+                 alt="Cerberus"
+                 style="height:36px;width:auto;" />
             <div>
                 <div class="header-title">Cerberus SQL Server Monitoring tool</div>
                 <div class="header-subtitle">Cerberus Dashboard</div>
@@ -872,7 +877,7 @@
             <select id="estate-select" name="estateKey" aria-describedby="estate-hint estate-message" disabled>
                 <option>Loading estates...</option>
             </select>
-            <span id="estate-hint" class="estate-hint">Shared by all dashboard users</span>
+            <span id="estate-hint" class="estate-hint">Choose your estate</span>
             <span id="estate-message" role="status" aria-live="polite"></span>
         </form>
 
