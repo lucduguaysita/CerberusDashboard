@@ -20,7 +20,7 @@ First tagged release. The application and installer are unchanged in behaviour f
 
 - Converted `INSTALLATION_GUIDE` and `CONNECTION_STRING_GUIDE` from `.docx` to Markdown so they render and diff on GitHub.
 - Installer now targets `%ProgramFiles%\CerberusDashboard` instead of a vendor subdirectory, and the MSI `Manufacturer` is `Cerberus Dashboard`.
-- Data-protection keys moved from `%ProgramData%\SITA\CerberusDashboard\DataProtection` to `%ProgramData%\CerberusDashboard\DataProtection`.
+- Data-protection keys now live in `%ProgramData%\CerberusDashboard\DataProtection`.
 - `appsettings.json` and `appsettings.json.example` reduced to a single credential-free local estate.
 - Aligned the `launchSettings.json` profile port with the configured endpoint.
 
