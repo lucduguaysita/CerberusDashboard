@@ -16,16 +16,16 @@ For step-by-step deployment, configuration, and troubleshooting, see [INSTALLATI
 Run from the repository root:
 
 ```powershell
-dotnet build .\CerberusInstaller\CerberusInstaller.wixproj -c Release -p:InstallerVersion=2.0.0
+dotnet build .\CerberusInstaller\CerberusInstaller.wixproj -c Release -p:InstallerVersion=1.0.0
 ```
 
 Alternatively, `dotnet build .\CerberusDashboard.sln -c Release` builds the application and installer together. For application-only development, build `CerberusDashboard.csproj`.
 
-Output: `CerberusInstaller\bin\Release\CerberusDashboard-2.0.0-win-x64.msi`.
+Output: `CerberusInstaller\bin\Release\CerberusDashboard-1.0.0-win-x64.msi`.
 
 The installer build deletes its private `CerberusInstaller\obj\Release\payload` staging directory, publishes a self-contained `win-x64` application, supplies the installer-specific configuration, and harvests the complete published file tree. It does not use the old root `publish` directory, the legacy FolderProfile, or a Visual Studio post-build event. Normal application publishing retains its existing configuration behavior.
 
-Use exactly three numeric version fields and increment them for releases (for example, `-p:InstallerVersion=2.0.1`). The MSI version limits apply: major and minor must be at most 255, and build must be at most 65535. Replacement packages must have a higher version; same-version replacement is not supported, and downgrades to a lower version are blocked. Keep the WiX UpgradeCode and the permanent configuration component GUID stable across releases.
+Use exactly three numeric version fields and increment them for releases (for example, `-p:InstallerVersion=1.0.1`). The MSI version limits apply: major and minor must be at most 255, and build must be at most 65535. Replacement packages must have a higher version; same-version replacement is not supported, and downgrades to a lower version are blocked. Keep the WiX UpgradeCode and the permanent configuration component GUID stable across releases.
 
 Builds are unsigned until a release-signing process is provided. Sign and verify the final MSI with the organization's code-signing certificate before distribution. Do not store certificates, passwords, or production connection strings in the repository or build parameters. Self-contained releases include the .NET runtime, so runtime security fixes require rebuilding and redeploying the application.
 

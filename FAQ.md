@@ -120,7 +120,7 @@ Server-scoped DMVs require `VIEW SERVER STATE`, or `VIEW SERVER PERFORMANCE STAT
 ### How do I build the installer?
 
 ```powershell
-dotnet build CerberusDashboard.sln -c Release -p:InstallerVersion=2.0.0
+dotnet build CerberusDashboard.sln -c Release -p:InstallerVersion=1.0.0
 ```
 
 The MSI lands in `CerberusInstaller\bin\Release\`. Use exactly three numeric version fields; major and minor are capped at 255 and build at 65535.

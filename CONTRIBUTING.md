@@ -20,7 +20,7 @@ The committed `appsettings.json` points at a local instance over integrated secu
 1. **Build the solution**, not just the application — the WiX installer is part of it:
 
    ```powershell
-   dotnet build CerberusDashboard.sln -c Release -p:InstallerVersion=2.0.0
+   dotnet build CerberusDashboard.sln -c Release -p:InstallerVersion=1.0.0
    ```
 
    The build must be clean. Do not add warnings.

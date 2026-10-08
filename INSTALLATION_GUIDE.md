@@ -29,10 +29,10 @@ End users install the approved MSI; they do not need the SDK or Visual Studio. B
 From the repository root:
 
 ```powershell
-dotnet build .\CerberusInstaller\CerberusInstaller.wixproj -c Release -p:InstallerVersion=2.0.0
+dotnet build .\CerberusInstaller\CerberusInstaller.wixproj -c Release -p:InstallerVersion=1.0.0
 ```
 
-Output: `CerberusInstaller\bin\Release\CerberusDashboard-2.0.0-win-x64.msi`. Building `CerberusDashboard.sln` also builds the installer; build `CerberusDashboard.csproj` alone for application-only development.
+Output: `CerberusInstaller\bin\Release\CerberusDashboard-1.0.0-win-x64.msi`. Building `CerberusDashboard.sln` also builds the installer; build `CerberusDashboard.csproj` alone for application-only development.
 
 The build publishes a fresh self-contained `win-x64` payload under `CerberusInstaller\obj\Release\payload` and supplies sanitized installer settings. Do not deploy an old root `publish` folder or legacy installer. Use exactly three numeric version fields; major/minor are limited to 255 and build to 65535. Increment the version for replacements. Builds are unsigned until release signing is applied: sign and verify the final MSI before distribution. Complete the isolated-VM release checks in `CerberusInstaller\README.md`, including install, upgrade, rollback, and uninstall.
 
@@ -41,7 +41,7 @@ The build publishes a fresh self-contained `win-x64` payload under `CerberusInst
 1. Use the approved `CerberusDashboard-<version>-win-x64.msi`. From an elevated PowerShell window, run the following example (adjust the package path/version and choose a writable log path):
 
    ```powershell
-   msiexec.exe /i ".\CerberusInstaller\bin\Release\CerberusDashboard-2.0.0-win-x64.msi" /qn /norestart /L*v "$env:TEMP\CerberusDashboard-install.log"
+   msiexec.exe /i ".\CerberusInstaller\bin\Release\CerberusDashboard-1.0.0-win-x64.msi" /qn /norestart /L*v "$env:TEMP\CerberusDashboard-install.log"
    ```
 
 2. The MSI installs per-machine to `%ProgramFiles%\CerberusDashboard`, registers the automatic `CerberusDashboard` service (display name: Cerberus Dashboard) under LocalSystem, and starts it. This package has no authored installation wizard or destination-folder selection.

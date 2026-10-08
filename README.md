@@ -112,7 +112,7 @@ Tests/                         Dependency-free regression runner
 dotnet build CerberusDashboard.csproj -c Release
 
 # Application and MSI
-dotnet build CerberusDashboard.sln -c Release -p:InstallerVersion=2.0.0
+dotnet build CerberusDashboard.sln -c Release -p:InstallerVersion=1.0.0
 ```
 
 The MSI lands in `CerberusInstaller\bin\Release\CerberusDashboard-<version>-win-x64.msi` and installs per-machine to `%ProgramFiles%\CerberusDashboard`, registering `CerberusDashboard` as an automatic service under LocalSystem bound to `localhost:5001`. Use exactly three numeric version fields. Builds are unsigned until a release-signing process is applied.
