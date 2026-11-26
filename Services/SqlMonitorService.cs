@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using System.Data;
 using Microsoft.Data.SqlClient;
@@ -14,6 +16,7 @@ namespace CerberusDashboard.Services
         private readonly List<SqlInstance> _instances;
         private readonly int _refreshSeconds;
         private readonly IConfiguration _config;
+        private readonly ILogger _logger;
 
         private class RawTableCounts
         {
@@ -42,9 +45,10 @@ namespace CerberusDashboard.Services
         private readonly HashSet<string> _partitionCacheLoaded = new HashSet<string>();
         private readonly object _partitionCacheLock = new object();
 
-        public SqlMonitorService(IConfiguration config)
+        public SqlMonitorService(IConfiguration config, ILogger<SqlMonitorService> logger = null)
         {
             _config = config;
+            _logger = (ILogger)logger ?? NullLogger.Instance;
             _instances = LoadInstances();
             int.TryParse(_config["MonitorRefreshSeconds"], out _refreshSeconds);
             if (_refreshSeconds < 5) _refreshSeconds = 30;
@@ -92,7 +96,7 @@ namespace CerberusDashboard.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"GetFileIOStats error [{instance.Key}]: {ex.Message}");
+                _logger.LogError(ex, "GetFileIOStats failed for instance {InstanceKey}", instance.Key);
                 return new List<DataFileIO>();
             }
         }
@@ -140,7 +144,7 @@ namespace CerberusDashboard.Services
                     catch (Exception ex)
                     {
                         snap.ServerInfo = new ServerInfo();
-                        System.Diagnostics.Debug.WriteLine("ServerInfo error: " + ex.Message);
+                        _logger.LogError(ex, "ServerInfo query failed for instance {InstanceKey}", instance.Key);
                     }
 
                     progress?.Invoke("  → " + instance.DisplayName + ": performance metrics...");
@@ -148,7 +152,7 @@ namespace CerberusDashboard.Services
                     catch (Exception ex)
                     {
                         snap.Performance = new PerformanceMetrics();
-                        System.Diagnostics.Debug.WriteLine("Performance error: " + ex.Message);
+                        _logger.LogError(ex, "Performance query failed for instance {InstanceKey}", instance.Key);
                     }
 
                     progress?.Invoke("  → " + instance.DisplayName + ": jobs...");
@@ -156,7 +160,7 @@ namespace CerberusDashboard.Services
                     catch (Exception ex)
                     {
                         snap.Jobs = new List<JobSummary>();
-                        System.Diagnostics.Debug.WriteLine("Jobs error: " + ex.Message);
+                        _logger.LogError(ex, "Jobs query failed for instance {InstanceKey}", instance.Key);
                     }
 
                     progress?.Invoke("  → " + instance.DisplayName + ": blocked sessions...");
@@ -164,7 +168,7 @@ namespace CerberusDashboard.Services
                     catch (Exception ex)
                     {
                         snap.BlockedSessions = new List<ActiveSession>();
-                        System.Diagnostics.Debug.WriteLine("BlockedSessions error: " + ex.Message);
+                        _logger.LogError(ex, "BlockedSessions query failed for instance {InstanceKey}", instance.Key);
                     }
 
                     progress?.Invoke("  → " + instance.DisplayName + ": top queries...");
@@ -172,7 +176,7 @@ namespace CerberusDashboard.Services
                     catch (Exception ex)
                     {
                         snap.TopQueries = new List<TopQuery>();
-                        System.Diagnostics.Debug.WriteLine("TopQueries error: " + ex.Message);
+                        _logger.LogError(ex, "TopQueries query failed for instance {InstanceKey}", instance.Key);
                     }
 
                     progress?.Invoke("  → " + instance.DisplayName + ": databases...");
@@ -180,7 +184,7 @@ namespace CerberusDashboard.Services
                     catch (Exception ex)
                     {
                         snap.Databases = new List<DatabaseInfo>();
-                        System.Diagnostics.Debug.WriteLine("Databases error: " + ex.Message);
+                        _logger.LogError(ex, "Databases query failed for instance {InstanceKey}", instance.Key);
                     }
 
                     progress?.Invoke("  → " + instance.DisplayName + ": active queries...");
@@ -188,7 +192,7 @@ namespace CerberusDashboard.Services
                     catch (Exception ex)
                     {
                         snap.RecentQueries = new List<RecentQuery>();
-                        System.Diagnostics.Debug.WriteLine("RecentQueries error: " + ex.Message);
+                        _logger.LogError(ex, "RecentQueries query failed for instance {InstanceKey}", instance.Key);
                     }
 
                     progress?.Invoke("  → " + instance.DisplayName + ": expensive queries...");
@@ -196,7 +200,7 @@ namespace CerberusDashboard.Services
                     catch (Exception ex)
                     {
                         snap.ExpensiveQueries = new List<ExpensiveQuery>();
-                        System.Diagnostics.Debug.WriteLine("ExpensiveQueries error: " + ex.Message);
+                        _logger.LogError(ex, "ExpensiveQueries query failed for instance {InstanceKey}", instance.Key);
                     }
 
                     progress?.Invoke("  → " + instance.DisplayName + ": data file I/O...");
@@ -205,7 +209,7 @@ namespace CerberusDashboard.Services
                     {
                         snap.DataFileIO = new List<DataFileIO>();
                         snap.DataFileIOError = ex.Message;
-                        System.Diagnostics.Debug.WriteLine("DataFileIO error: " + ex.Message);
+                        _logger.LogError(ex, "DataFileIO query failed for instance {InstanceKey}", instance.Key);
                     }
 
                     progress?.Invoke("  → " + instance.DisplayName + ": hot tables...");
@@ -214,7 +218,7 @@ namespace CerberusDashboard.Services
                     {
                         snap.HotTables = new List<HotTable>();
                         snap.HotTablesError = ex.Message;
-                        System.Diagnostics.Debug.WriteLine("HotTables error: " + ex.Message);
+                        _logger.LogError(ex, "HotTables query failed for instance {InstanceKey}", instance.Key);
                     }
                 }
             }
@@ -222,6 +226,7 @@ namespace CerberusDashboard.Services
             {
                 snap.IsOnline = false;
                 snap.ErrorMessage = ex.Message;
+                _logger.LogError(ex, "Snapshot failed for instance {InstanceKey} ({DisplayName})", instance.Key, instance.DisplayName);
             }
 
             return snap;
@@ -488,7 +493,7 @@ namespace CerberusDashboard.Services
             catch (Exception ex)
             {
                 // SQL Agent might not be running or accessible
-                System.Diagnostics.Debug.WriteLine("Job query error: " + ex.Message);
+                _logger.LogWarning(ex, "SQL Agent job query failed");
             }
 
             return jobs;
@@ -789,7 +794,7 @@ ORDER BY d.name";
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"GetQueryPlan error: {ex.Message}");
+                _logger.LogError(ex, "GetQueryPlan failed");
                 return new QueryPlan { ErrorMessage = ex.Message };
             }
         }
@@ -917,7 +922,7 @@ s.last_request_start_time                           AS LastRequestStart,
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("ActiveSessions error: " + ex.Message);
+                _logger.LogError(ex, "GetActiveSessions failed");
             }
 
             return sessions;
@@ -986,7 +991,7 @@ s.last_request_start_time                           AS LastRequestStart,
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("GetExpensiveQueries error: " + ex.Message);
+                _logger.LogError(ex, "GetExpensiveQueries failed");
             }
 
             return queries;

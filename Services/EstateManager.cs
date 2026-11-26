@@ -4,6 +4,8 @@ using System.Linq;
 using CerberusDashboard.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CerberusDashboard.Services
 {
@@ -12,10 +14,12 @@ namespace CerberusDashboard.Services
         private readonly object _sync = new object();
         private readonly Dictionary<string, EstateProfile> _profiles = new(StringComparer.OrdinalIgnoreCase);
         private EstateContext _active;
+        private readonly ILoggerFactory _loggerFactory;
         public string SessionId { get; } = Guid.NewGuid().ToString("N");
 
-        public EstateManager(IConfiguration configuration)
+        public EstateManager(IConfiguration configuration, ILoggerFactory loggerFactory = null)
         {
+            _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
             var sections = configuration.GetSection("Estates").GetChildren().ToList();
             foreach (var section in sections)
             {
@@ -91,8 +95,9 @@ namespace CerberusDashboard.Services
             }
         }
 
-        private static EstateContext CreateContext(EstateProfile profile, long revision)
-            => new EstateContext(profile.Key, revision, new SqlMonitorService(profile.Settings));
+        private EstateContext CreateContext(EstateProfile profile, long revision)
+            => new EstateContext(profile.Key, revision,
+                new SqlMonitorService(profile.Settings, _loggerFactory.CreateLogger<SqlMonitorService>()));
 
         private static IConfiguration CopySettings(IConfiguration source, string refreshDefault)
         {

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 using CerberusDashboard.Models;
 using CerberusDashboard.Services;
 
@@ -11,9 +12,11 @@ namespace CerberusDashboard.Hubs
     {
         private readonly EstateManager _estates;
         private readonly ConnectionTracker _tracker;
+        private readonly ILogger<MonitorHub> _logger;
 
-        public MonitorHub(EstateManager estates, ConnectionTracker tracker)
+        public MonitorHub(EstateManager estates, ConnectionTracker tracker, ILogger<MonitorHub> logger)
         {
+            _logger = logger;
             _estates = estates;
             _tracker = tracker;
         }
@@ -94,6 +97,7 @@ namespace CerberusDashboard.Hubs
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Full snapshot request failed");
                 await SendEstateData("receiveError", ex.Message);
             }
         }
@@ -107,6 +111,7 @@ namespace CerberusDashboard.Hubs
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Job history request failed for instance {InstanceKey}", instanceKey);
                 await SendEstateData("receiveError", "Job history error: " + ex.Message);
             }
         }
@@ -120,6 +125,7 @@ namespace CerberusDashboard.Hubs
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Query plan request failed for instance {InstanceKey}", instanceKey);
                 await SendEstateData("receiveError", "Query plan error: " + ex.Message);
             }
         }
@@ -133,6 +139,7 @@ namespace CerberusDashboard.Hubs
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Active sessions request failed for instance {InstanceKey}", instanceKey);
                 await SendEstateData("receiveError", "Active sessions error: " + ex.Message);
             }
         }
@@ -147,6 +154,7 @@ namespace CerberusDashboard.Hubs
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Partition info request failed for instance {InstanceKey}", instanceKey);
                 await SendEstateData("receiveError", "Partition info error: " + ex.Message);
             }
         }

@@ -8,6 +8,7 @@ using CerberusDashboard.Models;
 using CerberusDashboard.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace CerberusDashboard
 {
@@ -16,12 +17,15 @@ namespace CerberusDashboard
         private readonly IHubContext<MonitorHub> _hubContext;
         private readonly EstateManager _estates;
         private readonly ConnectionTracker _tracker;
+        private readonly ILogger<MonitorBackgroundService> _logger;
 
         public MonitorBackgroundService(
             IHubContext<MonitorHub> hubContext,
             EstateManager estates,
-            ConnectionTracker tracker)
+            ConnectionTracker tracker,
+            ILogger<MonitorBackgroundService> logger)
         {
+            _logger = logger;
             _hubContext = hubContext;
             _estates = estates;
             _tracker = tracker;
@@ -80,8 +84,7 @@ namespace CerberusDashboard
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine(
-                                $"MonitorTick error [{instanceKey}]: {ex.Message}");
+                            _logger.LogError(ex, "Monitor tick failed for instance {InstanceKey}", instanceKey);
                         }
                     }
 
@@ -99,14 +102,13 @@ namespace CerberusDashboard
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine(
-                                $"FileIO update error [{key}]: {ex.Message}");
+                            _logger.LogError(ex, "File I/O update failed for instance {InstanceKey}", key);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine("MonitorTick error: " + ex.Message);
+                    _logger.LogError(ex, "Monitor tick failed");
                 }
 
                 for (int second = 0; second < monitor.RefreshSeconds && _estates.Active == estate; second++)

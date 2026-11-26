@@ -1,10 +1,12 @@
 using CerberusDashboard;
 using CerberusDashboard.Hubs;
+using CerberusDashboard.Logging;
 using CerberusDashboard.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Linq;
@@ -29,6 +31,13 @@ builder.Host.UseWindowsService(options =>
 {
     options.ServiceName = "CerberusDashboard";
 });
+
+// Error log files: C:\ProgramData\CerberusDashboard\logs\cerberus-yyyyMMdd.log
+// Override with Logging:File:Path / Logging:File:RetentionDays / Logging:File:LogLevel.
+builder.Logging.AddProvider(new FileLoggerProvider(
+    builder.Configuration["Logging:File:Path"] ?? FileLoggerProvider.DefaultDirectory,
+    LogLevel.Warning,
+    int.TryParse(builder.Configuration["Logging:File:RetentionDays"], out var retentionDays) ? retentionDays : 30));
 
 builder.Services.AddControllersWithViews()
     .AddNewtonsoftJson();
